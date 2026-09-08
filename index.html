@@ -97,6 +97,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-o
 .persona .meta{font-family:var(--mono);font-size:11px;color:var(--tinta-suave);margin-top:2px}
 .etiqueta{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:99px;border:1px solid var(--linea-fuerte);color:var(--tinta-suave)}
 .etiqueta.aviso{border-color:var(--alerta);color:var(--alerta);background:var(--alerta-claro)}
+.etiqueta.nuevo{border-color:#8FBFAF;color:#155345;background:var(--hecho-claro);font-weight:600}
+.aviso-nuevos{border:1px solid #8FBFAF;background:var(--hecho-claro);color:#155345;border-radius:var(--r);padding:10px 12px;font-size:13px;margin-bottom:14px}
 .cintas{display:flex;flex-wrap:wrap;gap:5px}
 .chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--linea-fuerte);background:var(--superficie);color:var(--tinta-suave);
   border-radius:99px;padding:5px 10px 5px 7px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--cuerpo);line-height:1.1}
@@ -187,6 +189,8 @@ const tieneSac  = p => p.sacerdocio === 'Aarónico' || p.sacerdocio === 'Melquis
 const hecho = (p,k) => k==='recomendacion' ? tieneRec(p) : k==='llamamiento' ? tieneLlam(p) : !!p[k];
 const puntaje = p => PASOS.reduce((n,s)=> n + (hecho(p,s.k)?1:0), 0);
 const conversos = () => estado.personas;
+const DIAS_NUEVO = 14;
+const esNuevo = p => p.agregado && (Date.now() - Date.parse(p.agregado)) < DIAS_NUEVO*864e5;
 const fechaCorta = f => {
   if(!f) return 'Sin fecha';
   const M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -263,6 +267,38 @@ function pedirCodigo(){
   inp.onkeydown = e => { if(e.key==='Enter') entrar(); };
 }
 
+async function diagnostico(){
+  const modal = document.getElementById('modal');
+  const mostrar = (titulo, cuerpo) => {
+    modal.innerHTML = `<h3 id="mTitulo">${titulo}</h3>${cuerpo}
+      <div class="acciones"><button class="btn" id="d_cerrar">Cerrar</button></div>`;
+    document.getElementById('velo').classList.add('abierto');
+    document.getElementById('d_cerrar').onclick = ()=> document.getElementById('velo').classList.remove('abierto');
+  };
+  mostrar('Probando\u2026', '<p class="nota">Un momento.</p>');
+  let r, txt;
+  try{
+    r = await fetch(API + '?t=' + Date.now(), {cache:'no-store', headers: codigo ? {'x-codigo':codigo} : {}});
+    txt = await r.text();
+  }catch(e){
+    return mostrar('No hay respuesta del servidor',
+      `<p class="nota">La p\u00e1gina no logr\u00f3 llamar a <code>${API}</code>. Suele pasar cuando abres el archivo directamente desde tu computadora en vez de la direcci\u00f3n de Vercel.</p>`);
+  }
+  const recorte = `<div class="recordatorio" style="font-family:var(--mono);font-size:11px;word-break:break-all">HTTP ${r.status} \u00b7 ${esc(txt.slice(0,160))}</div>`;
+  if(r.status === 404 || /<!DOCTYPE/i.test(txt))
+    return mostrar('La funci\u00f3n no est\u00e1 desplegada',
+      `<p class="nota">Vercel respondi\u00f3 con una p\u00e1gina, no con datos. El archivo <code>datos.js</code> tiene que estar dentro de una carpeta llamada <code>api</code>, o sea <code>api/datos.js</code>.</p>${recorte}`);
+  if(r.status === 401)
+    return mostrar('Conexi\u00f3n correcta', `<p class="nota">El servidor responde y pide el c\u00f3digo de acceso. Todo bien.</p>${recorte}`);
+  if(r.status === 500)
+    return mostrar('Falta la base de datos',
+      `<p class="nota">La funci\u00f3n corre pero no puede guardar. Instala <strong>Upstash Redis</strong> en Storage, con\u00e9ctala a este proyecto y vuelve a desplegar.</p>${recorte}`);
+  if(r.ok)
+    return mostrar('Todo funcionando',
+      `<p class="nota">El servidor respondi\u00f3 bien. Lo que marques se guarda para todos.</p>${recorte}`);
+  return mostrar('Respuesta inesperada', recorte);
+}
+
 async function cargar(){
   try{
     const d = await pedir('GET');
@@ -278,7 +314,7 @@ async function cargar(){
   }catch(e){
     if(e.codigo){ estado.personas = []; pedirCodigo(); return; }
     estado.personas = SEED.slice();
-    marcar('Sin conexión con el servidor (' + e.message + '). Los cambios no se guardan.', false);
+    marcar('Sin conexión con el servidor (' + e.message + '). Usa «Probar conexión» en el panel.', false);
   }
 }
 
@@ -321,7 +357,11 @@ function panelHTML(){
     ['Con llamamiento o asignación', L.filter(tieneLlam).length, T],
     ['Hermanos ordenados al sacerdocio', L.filter(tieneSac).length, L.filter(aplicaSac).length]
   ];
-  let h = `<h2 class="sec">Cómo va la estaca</h2>
+  const recientes = L.filter(esNuevo);
+  let h = recientes.length
+    ? `<div class="aviso-nuevos"><strong>${recientes.length} converso(s) añadido(s) en los últimos ${DIAS_NUEVO} días.</strong> Salen marcados con «Añadido recientemente» en su unidad: ${recientes.slice(0,6).map(p=>esc(p.nombre)).join(', ')}${recientes.length>6?' y '+(recientes.length-6)+' más':''}.</div>`
+    : '';
+  h += `<h2 class="sec">Cómo va la estaca</h2>
   <p class="nota">${T} conversos en ${unidadesActivas().length} unidades. Cada porcentaje se calcula solo con lo que está marcado abajo.</p>
   <div class="grid-stats">` +
   cards.map(([t,a,b])=>`<div class="stat"><h3>${esc(t)}</h3><div class="pct">${pct(a,b)}%</div>
@@ -354,6 +394,7 @@ function panelHTML(){
   <div class="tools">
     <button class="btn primario" data-importar="1">Actualizar desde el informe de LCR</button>
     <button class="btn" data-csv="1">Descargar respaldo (CSV)</button>
+    <button class="btn sutil" data-diag="1">Probar conexión</button>
     <input type="file" id="archivo" accept=".xlsx,.xls,.csv" style="display:none">
   </div>`;
   return h;
@@ -399,7 +440,7 @@ function filaHTML(p){
     : `<button class="chip na" data-abrir="${p.id}" title="Sin registro de sacerdocio"><span class="caja"></span>Sacerdocio —</button>`;
   return `<div class="persona${listo?' completo':''}">
     <div class="quien">
-      <div class="nom">${esc(p.nombre)}</div>
+      <div class="nom">${esc(p.nombre)}${esNuevo(p)?' <span class="etiqueta nuevo">Añadido recientemente</span>':''}</div>
       <div class="meta">Bautismo ${fechaCorta(p.bautismo)} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
     </div>
     <div class="cintas">${chips}${sac}</div>
@@ -488,7 +529,7 @@ function nuevaFicha(unidad){
     if(!nom){ document.getElementById('n_nombre').focus(); return; }
     const nid = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     estado.personas.push({
-      id:nid,
+      id:nid, agregado:new Date().toISOString(),
       nombre:nom, unidad:document.getElementById('n_unidad').value,
       bautismo:document.getElementById('n_bautismo').value, recomendacion:'',
       ministrantes:false, ministrantesNota:'', nombreHF:false, nombreHFNota:'',
@@ -600,7 +641,7 @@ async function importar(file){
   let h = `<h3 id="mTitulo">Revisión del informe</h3>
     <p class="nota">${regs.length} personas en el archivo. Nada se aplica hasta que confirmes.</p>`;
   h += `<div class="recordatorio"><strong>${nuevos.length}</strong> por añadir · <strong>${cambios.length}</strong> por actualizar · <strong>${ausentes.length}</strong> en tu lista que no vienen en el informe (no se tocan).</div>`;
-  if(nuevos.length) h += `<div class="campo"><label>Se añadirán</label><div style="font-size:13px;line-height:1.7">${nuevos.map(n=>`${esc(n.nombre)} <span class="etiqueta">${esc(n.unidad.replace('Barrio ','').replace('Rama ',''))}</span>`).join('<br>')}</div></div>`;
+  if(nuevos.length) h += `<div class="campo"><label>Se añadirán (quedan marcados «Añadido recientemente» ${DIAS_NUEVO} días)</label><div style="font-size:13px;line-height:1.7">${nuevos.map(n=>`${esc(n.nombre)} <span class="etiqueta">${esc(n.unidad.replace('Barrio ','').replace('Rama ',''))}</span>`).join('<br>')}</div></div>`;
   if(cambios.length) h += `<div class="campo"><label>Se actualizarán</label><div style="font-size:13px;line-height:1.6">${cambios.map(c=>
       `<div style="margin-bottom:7px"><strong>${esc(c.p.nombre)}</strong><br>${c.dif.map(d=>`<span style="color:var(--tinta-suave)">${esc(d[1])}: ${esc(d[2])} → ${esc(d[3])}</span>`).join('<br>')}</div>`).join('')}</div>`;
   if(ausentes.length) h += `<div class="campo"><label>No aparecen en el informe</label><div style="font-size:13px;color:var(--tinta-suave)">${ausentes.map(p=>esc(p.nombre)).join(', ')}</div></div>`;
@@ -612,7 +653,7 @@ async function importar(file){
     const tocados = [];
     nuevos.forEach(r=>{
       const id = 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-      estado.personas.push(Object.assign({id, nombreHF:false, nombreHFNota:'', notas:''}, r));
+      estado.personas.push(Object.assign({id, agregado:new Date().toISOString(), nombreHF:false, nombreHFNota:'', notas:''}, r));
       tocados.push(id);
     });
     cambios.forEach(c=>{
@@ -637,10 +678,10 @@ function avisoImport(html, alAplicar){
 
 function descargarCSV(){
   const enc = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const cab = ['Nombre','Unidad','Fecha del bautismo','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas'];
+  const cab = ['Nombre','Unidad','Fecha del bautismo','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas','Añadido el'];
   const filas = estado.personas.slice().sort((a,b)=>(b.bautismo||'').localeCompare(a.bautismo||''))
     .map(p=>[p.nombre,p.unidad,p.bautismo,p.recomendacion,p.ministrantes?'Sí':'No',
-    p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,p.notas].map(enc).join(','));
+    p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,p.notas,(p.agregado||'').slice(0,10)].map(enc).join(','));
   const csv = '\uFEFF' + [cab.map(enc).join(',')].concat(filas).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
@@ -660,6 +701,7 @@ function pintar(){
   panel.querySelectorAll('[data-abrir]').forEach(b=> b.onclick = ()=> abrirFicha(b.dataset.abrir));
   panel.querySelectorAll('[data-nuevo]').forEach(b=> b.onclick = ()=> nuevaFicha(b.dataset.nuevo));
   panel.querySelectorAll('[data-csv]').forEach(b=> b.onclick = descargarCSV);
+  panel.querySelectorAll('[data-diag]').forEach(b=> b.onclick = diagnostico);
   const inp = document.getElementById('archivo');
   panel.querySelectorAll('[data-importar]').forEach(b=> b.onclick = ()=> inp.click());
   if(inp) inp.onchange = ()=>{ if(inp.files[0]) importar(inp.files[0]); inp.value=''; };
