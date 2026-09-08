@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversos Recientes · Estaca Central</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --papel:#EDF1EC; --superficie:#FFFFFF; --tinta:#182723; --tinta-suave:#5A6B64;
+  --linea:#D3DBD1; --linea-fuerte:#B9C4B7;
+  --hecho:#1F6F5C; --hecho-claro:#E2F0EA;
+  --alerta:#A85F1B; --alerta-claro:#F7ECDF;
+  --pendiente:#93A29B;
+  --display:'Bricolage Grotesque','Public Sans',system-ui,sans-serif;
+  --cuerpo:'Public Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--papel);color:var(--tinta);font-family:var(--cuerpo);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:1120px;margin:0 auto;padding:0 14px 72px}
+
+/* ---------- Encabezado ---------- */
+header.top{padding:26px 0 14px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-suave)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.4vw,42px);line-height:1.02;margin:6px 0 8px;letter-spacing:-.02em}
+.sub{color:var(--tinta-suave);font-size:14px;max-width:56ch}
+.estado{display:flex;align-items:center;gap:8px;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--tinta-suave)}
+.punto{width:7px;height:7px;border-radius:50%;background:var(--hecho)}
+.punto.off{background:var(--alerta)}
+
+/* ---------- Pestañas ---------- */
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding:12px 0 0;margin:0 -14px;padding-left:14px;padding-right:14px;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;background:transparent;border:1px solid transparent;border-bottom:none;border-radius:var(--r) var(--r) 0 0;
+  padding:9px 13px;font-family:var(--display);font-weight:600;font-size:14px;color:var(--tinta-suave);cursor:pointer;white-space:nowrap;position:relative;top:1px}
+.tab .n{font-family:var(--mono);font-size:11px;color:var(--pendiente);margin-left:6px}
+.tab:hover{color:var(--tinta)}
+.tab[aria-selected="true"]{background:var(--superficie);border-color:var(--linea);color:var(--tinta)}
+.tab[aria-selected="true"] .n{color:var(--hecho)}
+.tab:focus-visible{outline:2px solid var(--hecho);outline-offset:2px}
+.panel{background:var(--superficie);border:1px solid var(--linea);border-radius:0 var(--r) var(--r) var(--r);padding:18px 14px 22px}
+
+/* ---------- Tarjetas de estadística ---------- */
+.grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px}
+.stat{border:1px solid var(--linea);border-radius:var(--r);padding:13px 13px 11px;background:var(--superficie)}
+.stat h3{margin:0;font-family:var(--cuerpo);font-weight:600;font-size:12.5px;color:var(--tinta-suave);line-height:1.25;min-height:2.4em}
+.stat .pct{font-family:var(--mono);font-weight:600;font-size:34px;letter-spacing:-.04em;line-height:1;margin:8px 0 2px;font-variant-numeric:tabular-nums}
+.stat .frac{font-family:var(--mono);font-size:11px;color:var(--tinta-suave)}
+.barra{height:5px;border-radius:99px;background:#E7EBE6;margin-top:9px;overflow:hidden}
+.barra i{display:block;height:100%;background:var(--hecho);border-radius:99px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+
+/* ---------- Mosaico ---------- */
+.mosaico{display:flex;flex-wrap:wrap;gap:3px;margin-top:12px}
+.tile{width:15px;height:15px;border-radius:3px;border:none;padding:0;cursor:pointer}
+.tile:focus-visible{outline:2px solid var(--tinta);outline-offset:1px}
+.leyenda{display:flex;flex-wrap:wrap;gap:12px;margin-top:11px;font-family:var(--mono);font-size:10.5px;color:var(--tinta-suave);align-items:center}
+.leyenda span{display:flex;align-items:center;gap:5px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+h2.sec{font-family:var(--display);font-weight:700;font-size:17px;margin:26px 0 4px;letter-spacing:-.01em}
+h2.sec:first-child{margin-top:0}
+p.nota{color:var(--tinta-suave);font-size:12.5px;margin:0 0 12px}
+
+/* ---------- Tabla por unidad ---------- */
+table.unidades{width:100%;border-collapse:collapse;font-size:13px}
+table.unidades th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);font-weight:500;padding:6px 6px;border-bottom:1px solid var(--linea)}
+table.unidades td{padding:7px 6px;border-bottom:1px solid var(--linea);font-variant-numeric:tabular-nums}
+table.unidades td.num{font-family:var(--mono);text-align:right}
+table.unidades tr:last-child td{border-bottom:none}
+
+/* ---------- Barra de herramientas ---------- */
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+input[type=text],input[type=date],select,textarea{font-family:var(--cuerpo);font-size:14px;color:var(--tinta);background:var(--superficie);
+  border:1px solid var(--linea-fuerte);border-radius:8px;padding:8px 10px;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-offset:-1px;border-color:var(--hecho)}
+.buscar{flex:1 1 180px}
+.btn{font-family:var(--display);font-weight:600;font-size:13.5px;border:1px solid var(--linea-fuerte);background:var(--superficie);color:var(--tinta);
+  border-radius:8px;padding:8px 13px;cursor:pointer}
+.btn:hover{border-color:var(--tinta);}
+.btn.primario{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+.btn.primario:hover{background:#0d1a17}
+.btn.sutil{border-color:transparent;color:var(--tinta-suave);padding:8px 8px}
+.btn:focus-visible{outline:2px solid var(--hecho);outline-offset:2px}
+.toggle-filtro{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--tinta-suave);cursor:pointer;user-select:none}
+
+/* ---------- Fila de persona ---------- */
+.persona{border:1px solid var(--linea);border-radius:var(--r);padding:11px 12px;margin-bottom:8px;background:var(--superficie);
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.persona.completo{border-color:#CBE0D6;background:#FAFDFB}
+.persona .quien{flex:1 1 230px;min-width:0}
+.persona .nom{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:-.01em;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.persona .meta{font-family:var(--mono);font-size:11px;color:var(--tinta-suave);margin-top:2px}
+.etiqueta{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:99px;border:1px solid var(--linea-fuerte);color:var(--tinta-suave)}
+.etiqueta.aviso{border-color:var(--alerta);color:var(--alerta);background:var(--alerta-claro)}
+.cintas{display:flex;flex-wrap:wrap;gap:5px}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--linea-fuerte);background:var(--superficie);color:var(--tinta-suave);
+  border-radius:99px;padding:5px 10px 5px 7px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--cuerpo);line-height:1.1}
+.chip .caja{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--linea-fuerte);display:grid;place-items:center;flex:0 0 auto}
+.chip .caja svg{width:9px;height:9px;opacity:0}
+.chip[aria-pressed="true"]{background:var(--hecho-claro);border-color:#8FBFAF;color:#155345}
+.chip[aria-pressed="true"] .caja{background:var(--hecho);border-color:var(--hecho)}
+.chip[aria-pressed="true"] .caja svg{opacity:1;stroke:#fff}
+.chip.aviso{background:var(--alerta-claro);border-color:#D9B58A;color:var(--alerta)}
+.chip.aviso .caja{background:var(--alerta);border-color:var(--alerta)}
+.chip.aviso .caja svg{opacity:1;stroke:#fff}
+.chip:focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
+.chip.na{opacity:.5;cursor:default}
+.abrir{border:none;background:transparent;color:var(--tinta-suave);cursor:pointer;font-size:18px;line-height:1;padding:6px 4px;border-radius:6px}
+.abrir:hover{color:var(--tinta);background:#EFF3EE}
+
+.vacio{border:1px dashed var(--linea-fuerte);border-radius:var(--r);padding:26px 16px;text-align:center;color:var(--tinta-suave);font-size:14px}
+
+/* ---------- Modal ---------- */
+.velo{position:fixed;inset:0;background:rgba(20,32,28,.5);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.velo.abierto{display:flex}
+.modal{background:var(--superficie);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px 26px}
+@media(min-width:640px){.velo{align-items:center}.modal{border-radius:16px}}
+.modal h3{font-family:var(--display);font-size:19px;margin:0 0 2px;letter-spacing:-.01em}
+.campo{margin-top:13px}
+.campo label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);margin-bottom:5px}
+.campo input,.campo select,.campo textarea{width:100%}
+.fila2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acciones{display:flex;gap:8px;margin-top:20px;align-items:center}
+.acciones .btn.primario{flex:1}
+.peligro{color:#96341F;border-color:#E2C0B7}
+.recordatorio{background:#F5F8F4;border:1px solid var(--linea);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tinta-suave);margin-top:13px}
+
+footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta-suave);line-height:1.7}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{nav.tabs,.tools,.abrir,footer{display:none}.panel{border:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Estaca Central · Santo Domingo</div>
+    <h1>Conversos recientes</h1>
+    <p class="sub">Seguimiento del cuidado de cada converso bautizado desde agosto de 2025. Toca cada distintivo para marcar lo que ya se cumplió; se guarda para todos los que abran este enlace.</p>
+    <div class="estado"><span class="punto" id="pDot"></span><span id="pEstado">Cargando…</span></div>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div class="panel" id="panel" role="tabpanel"></div>
+
+  <footer>
+    Fuente: Informe de conversos recientes · 1 ago 2025 – 21 ago 2026 · <span id="fTotal"></span><br>
+    Los cambios que hagas aquí se guardan y se comparten con todas las personas que abran este enlace.
+  </footer>
+</div>
+
+<div class="velo" id="velo">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitulo" id="modal"></div>
+</div>
+
+<script>
+const SEED = [{"id":"p0faf9c91","nombre":"Batista, Brendaly Gil","unidad":"Barrio Bella Vista","bautismo":"2025-11-23","recomendacion":"","ministrantes":true,"ministrantesNota":"Polanco Jerez, Moises / Ortega, Alberto","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p0d5038f9","nombre":"Cuevas Arias, Fabibel","unidad":"Barrio Bella Vista","bautismo":"2026-06-20","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Gomera Rodriguez, Ruth Naftali / Reyes Reynoso, Nelly Marie","nombreHF":false,"nombreHFNota":"","llamamiento":"Secretaria de Primaria","sacerdocio":"","notas":""},{"id":"p4ad58dcb","nombre":"Jorge Laclè, Julian Timothy","unidad":"Barrio Bella Vista","bautismo":"2025-08-24","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Dominguez Joa, Leonardo Caonabo / Pineda Reyes, Elvi Ricardo","nombreHF":false,"nombreHFNota":"","llamamiento":"Presidente de quórum de maestros","sacerdocio":"Aarónico","notas":""},{"id":"p8e8ffaaa","nombre":"Jose Mertus, Ana Franchesca","unidad":"Barrio Bella Vista","bautismo":"2026-06-06","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p0c0a5ce7","nombre":"Martinez, Bernarda","unidad":"Barrio Bella Vista","bautismo":"2026-05-16","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Ricardo de Valenzuela, Liz Shantalle / Campusano Abreu, Habia Ruth","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p7d38fe27","nombre":"Messón Ozuna, Luis Eduardo","unidad":"Barrio Bella Vista","bautismo":"2026-05-12","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pca7fca9a","nombre":"Oyoque, Yuraima","unidad":"Barrio Bella Vista","bautismo":"2025-10-19","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Paniagua Mercedes, Clara Elizabeth / Rosario, Carolyn / Calderon Arroyo, Judith Belkis / Jose Manuel, Bido / Bido Rosario, Alejandro","nombreHF":false,"nombreHFNota":"","llamamiento":"Secretaria de las Mujeres Jóvenes","sacerdocio":"","notas":""},{"id":"pb5a1b488","nombre":"Petithomme, Adrien","unidad":"Barrio Bella Vista","bautismo":"2025-08-24","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p9131e525","nombre":"Salazar, Jaqueline","unidad":"Barrio Bella Vista","bautismo":"2026-01-04","recomendacion":"","ministrantes":true,"ministrantesNota":"Ramos Camacho, Esteffani Priscila / Cuevas Ferreras, Sobeyda Yamire / Guzman Díaz, Ariel Segismundo / Guzman Rosario, Ariel Jesus","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p90fe6357","nombre":"Sepúlveda Mesa, Cristian Rafael","unidad":"Barrio Bella Vista","bautismo":"2026-06-20","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pb96330db","nombre":"Aguasvivas placencia, Ian Ernesto","unidad":"Barrio Cristo Rey","bautismo":"2026-05-23","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pd068d71f","nombre":"Alexime, Lucas","unidad":"Barrio Cristo Rey","bautismo":"2026-01-03","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p58e813b3","nombre":"Altidor, Stanley","unidad":"Barrio Cristo Rey","bautismo":"2026-01-11","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p96b3e258","nombre":"Castillo Reynoso, Luisanny","unidad":"Barrio Cristo Rey","bautismo":"2026-07-25","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"peb19ca11","nombre":"Castillo Ricardo, Elvys","unidad":"Barrio Cristo Rey","bautismo":"2026-01-08","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p67dd9679","nombre":"Castillo Segura, Jordani","unidad":"Barrio Cristo Rey","bautismo":"2026-06-13","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pde317b38","nombre":"Castro Marmolejos, Brayan Eliezer","unidad":"Barrio Cristo Rey","bautismo":"2026-06-27","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pd471c90c","nombre":"Celamy, Matel Espelancio","unidad":"Barrio Cristo Rey","bautismo":"2025-12-20","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pc77507de","nombre":"Collin, Donels","unidad":"Barrio Cristo Rey","bautismo":"2025-11-01","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p0400f1f5","nombre":"Collin, Wilson","unidad":"Barrio Cristo Rey","bautismo":"2025-09-27","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Muñoz Abreu, Manuel Antonio / Muñoz Paredes, Jostin Manuel","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p15ed3046","nombre":"Contreras Ogando, Scarlet","unidad":"Barrio Cristo Rey","bautismo":"2025-08-03","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p13198858","nombre":"Cuevas Coronado, Josue Ramón","unidad":"Barrio Cristo Rey","bautismo":"2025-09-27","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pbd198936","nombre":"D' Oleo', Andreina De Lo Santos","unidad":"Barrio Cristo Rey","bautismo":"2026-08-01","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Caba Ortiz, Maria de los Angeles / Carmona Lorenzo, Mayelin","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p68f1a294","nombre":"De La Cruz Garcia, Brainel Alexander","unidad":"Barrio Cristo Rey","bautismo":"2026-01-25","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p7b3a31ee","nombre":"De Los Santos, Denifer","unidad":"Barrio Cristo Rey","bautismo":"2026-04-12","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p288e5b0e","nombre":"Delgado Flores, Eury Emanuel","unidad":"Barrio Cristo Rey","bautismo":"2026-03-15","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pd9c0576a","nombre":"Destilis, Judson","unidad":"Barrio Cristo Rey","bautismo":"2025-11-01","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pfd2bb5a6","nombre":"Diaz Castro, Malvin Miguel","unidad":"Barrio Cristo Rey","bautismo":"2026-02-14","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p2829b575","nombre":"Dorvilus Jean, Wilbert","unidad":"Barrio Cristo Rey","bautismo":"2025-10-11","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Frédéric, Leyson / Fabian Liranzo, Sander Michel","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p50a29ba2","nombre":"Dorvilus Jean, Wilmer Ninguno","unidad":"Barrio Cristo Rey","bautismo":"2025-10-11","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Frédéric, Leyson / Fabian Liranzo, Sander Michel","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p01101169","nombre":"Dorvilus Jeans, Yonki","unidad":"Barrio Cristo Rey","bautismo":"2025-11-29","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p0459e39f","nombre":"Dosevir, Chicken","unidad":"Barrio Cristo Rey","bautismo":"2025-11-01","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p775b2b0e","nombre":"Dosevir, Edison","unidad":"Barrio Cristo Rey","bautismo":"2025-11-01","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p7e007baa","nombre":"Díaz Marte, Miguel Emilio","unidad":"Barrio Cristo Rey","bautismo":"2025-08-31","recomendacion":"Vence el próximo mes","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p1cd1cea7","nombre":"Flores Delgado, Jadiel Starlin","unidad":"Barrio Cristo Rey","bautismo":"2026-03-28","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pe40f0680","nombre":"Gomez, Milta Mercedes","unidad":"Barrio Cristo Rey","bautismo":"2025-08-10","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pc73288b1","nombre":"Hernandez Alcántara, Eliezer","unidad":"Barrio Cristo Rey","bautismo":"2025-12-28","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p66be8ab2","nombre":"Hernandez, Guillermo Angel Reyes","unidad":"Barrio Cristo Rey","bautismo":"2025-11-08","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Segundo ayudante de quórum de presbíteros","sacerdocio":"Aarónico","notas":""},{"id":"p3d2c9ee8","nombre":"Jacksena, Josue","unidad":"Barrio Cristo Rey","bautismo":"2025-11-16","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pb1010f0b","nombre":"Jacksena, Mara","unidad":"Barrio Cristo Rey","bautismo":"2025-11-29","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Feliz De Castillo, Sabi Mariel / Jean Baptiste, Mimose / Fernández Suarez, Carmen Mercedes","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pdc94af40","nombre":"Japa Borgen, Lenny Nicolas","unidad":"Barrio Cristo Rey","bautismo":"2025-12-13","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p840f1f93","nombre":"Javier ortega, Yojensi","unidad":"Barrio Cristo Rey","bautismo":"2026-01-25","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pebbe9278","nombre":"Javier, Ismael","unidad":"Barrio Cristo Rey","bautismo":"2026-01-25","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p40bc7bc3","nombre":"Jorge Castillo, Jorge Junior","unidad":"Barrio Cristo Rey","bautismo":"2026-01-11","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p1dca9aa5","nombre":"Lanessse, Jenssy","unidad":"Barrio Cristo Rey","bautismo":"2025-11-29","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p5530961f","nombre":"Librun, Kattia","unidad":"Barrio Cristo Rey","bautismo":"2025-08-10","recomendacion":"","ministrantes":true,"ministrantesNota":"Basora, Gladis Cristina / Martienez Troncoso de Paredes, Isabel / Sanchez Diaz, Livan Santiago / Simeon, Ronald","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pf9a8cb96","nombre":"Marrero, Wilian Nazario","unidad":"Barrio Cristo Rey","bautismo":"2026-07-25","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pf0e34d23","nombre":"Montero Rodriguez, Francis Gabriel","unidad":"Barrio Cristo Rey","bautismo":"2025-10-11","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Frédéric, Leyson / Fabian Liranzo, Sander Michel","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p8a60a27d","nombre":"Moore Reyes, Roselin","unidad":"Barrio Cristo Rey","bautismo":"2026-02-14","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pa56cad7a","nombre":"Oguis, Elianny","unidad":"Barrio Cristo Rey","bautismo":"2026-02-14","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pfcc4d7ef","nombre":"Patricio Rodriguez, Maicol Miguel","unidad":"Barrio Cristo Rey","bautismo":"2026-01-11","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p0f0eb4d8","nombre":"Peralta, Maria Del Pilar","unidad":"Barrio Cristo Rey","bautismo":"2025-08-10","recomendacion":"","ministrantes":true,"ministrantesNota":"Contreras, Jacqueline del Carmen / Capellán Vázques, Scarlett","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p8325c39d","nombre":"Placencia Peralta, James Joseph","unidad":"Barrio Cristo Rey","bautismo":"2025-08-10","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pc54d00e8","nombre":"Polanco Castillo, Roberto Luis","unidad":"Barrio Cristo Rey","bautismo":"2026-05-23","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Primer consejero del quórum de diáconos","sacerdocio":"Aarónico","notas":""},{"id":"p802d25b3","nombre":"Polanco Santana, Ramon Arturo","unidad":"Barrio Cristo Rey","bautismo":"2026-06-27","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p27abf9cf","nombre":"Rondón Martinez, Cristofer","unidad":"Barrio Cristo Rey","bautismo":"2025-11-01","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p5e4e8f92","nombre":"Solano Bueno, Ingrid","unidad":"Barrio Cristo Rey","bautismo":"2026-02-14","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pa98f8152","nombre":"Suarez De Jesus, Ana Virgilia","unidad":"Barrio Cristo Rey","bautismo":"2025-08-10","recomendacion":"","ministrantes":true,"ministrantesNota":"Jerez Hernadez, Dolores / Paredes, Carolina","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p04d8a788","nombre":"Ureña Valdez, Jarolin Chantal","unidad":"Barrio Cristo Rey","bautismo":"2026-04-18","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Contreras De Los Santos, Carmen / García Mota, Mayerling Michaell","nombreHF":false,"nombreHFNota":"","llamamiento":"Segunda consejera de Primaria","sacerdocio":"","notas":""},{"id":"pff0196db","nombre":"Valdez, Lorena Florentina","unidad":"Barrio Cristo Rey","bautismo":"2025-08-22","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pde0f76ef","nombre":"Celicourt Lesmiex, Sorayne","unidad":"Barrio La Fe","bautismo":"2025-08-31","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p5f503ff1","nombre":"Celicourt Lesmiex, Wilma","unidad":"Barrio La Fe","bautismo":"2025-08-31","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p6021850c","nombre":"Espinal Perdomo, Delta Jacqueline","unidad":"Barrio La Fe","bautismo":"2025-08-31","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Fernández Díaz, Deysi Estela / DE LA CRUZ DIAZ, YESSICA LUCIA","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p74060fb3","nombre":"Fortuna Encarnación, Marileyda","unidad":"Barrio La Fe","bautismo":"2025-11-30","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p89624557","nombre":"Hernandez Aquino, Penelope Chanel","unidad":"Barrio La Fe","bautismo":"2026-03-28","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pb8d271f1","nombre":"Lantigua Marizan, Grecia","unidad":"Barrio La Fe","bautismo":"2025-12-28","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Pérez Espinal, Pamela Alexandra / Fernández Díaz, Amelia Filandia","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p768c2882","nombre":"Longpré, Emelisa","unidad":"Barrio La Fe","bautismo":"2026-04-19","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Pérez Espinal, Pamela Alexandra / Fernández Díaz, Amelia Filandia","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pea6f904a","nombre":"Martinez Carrasco, Daniela Esmeralda","unidad":"Barrio La Fe","bautismo":"2026-07-18","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p22029bfd","nombre":"Martinez Martinez, Santa Antonia","unidad":"Barrio La Fe","bautismo":"2026-03-03","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Pérez Espinal, Pamela Alexandra / Fernández Díaz, Amelia Filandia","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pd2b58b97","nombre":"Mercado, Halberto","unidad":"Barrio La Fe","bautismo":"2025-09-21","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p70c3fc5c","nombre":"Morey Rosa, Rafael Alberto","unidad":"Barrio La Fe","bautismo":"2026-05-17","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p2b60704d","nombre":"Rodriguez Martes, Alan Steven","unidad":"Barrio La Fe","bautismo":"2026-08-15","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p03754a64","nombre":"Rodriguez Nicasio, Angel Enmanuel","unidad":"Barrio La Fe","bautismo":"2026-08-15","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pf343b089","nombre":"Salazar Trinidad, Lizmer","unidad":"Barrio La Fe","bautismo":"2026-07-25","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p2bc1fd7f","nombre":"Beato Cabrera, Jean Gabriel","unidad":"Barrio La Paz","bautismo":"2025-10-26","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Segundo ayudante de quórum de presbíteros","sacerdocio":"Aarónico","notas":""},{"id":"p8a858fff","nombre":"Cuevas Ramirez, Jose Oscar","unidad":"Barrio La Paz","bautismo":"2026-03-15","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"TEJEDA, ROBERT / Diaz Jimenez, Elio Manuel","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p3b38f510","nombre":"De León De La Cruz, Joselin","unidad":"Barrio La Paz","bautismo":"2025-08-02","recomendacion":"Vence este mes","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pb71bfd13","nombre":"De Los Santos Heredia, Emerson Ysrael","unidad":"Barrio La Paz","bautismo":"2026-03-15","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Primer consejero de quórum de maestros","sacerdocio":"Aarónico","notas":""},{"id":"pce772e4f","nombre":"De Los Santos Valdez, Miguel Angel","unidad":"Barrio La Paz","bautismo":"2025-11-16","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pd1a05e0b","nombre":"Flores Tiburcio, Bryan","unidad":"Barrio La Paz","bautismo":"2026-05-30","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Secretario de quórum de presbíteros","sacerdocio":"Aarónico","notas":""},{"id":"pa29d31f8","nombre":"Hernández De La Cruz, Jeiro Rafael","unidad":"Barrio La Paz","bautismo":"2026-05-10","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Secretario de quórum de maestros","sacerdocio":"Aarónico","notas":""},{"id":"p662bc84c","nombre":"Martínez Bautista, Julian Alfredo","unidad":"Barrio La Paz","bautismo":"2026-06-21","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pfa8dd07f","nombre":"Martínez Bautista, Juliana","unidad":"Barrio La Paz","bautismo":"2026-06-21","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p5608e7a5","nombre":"Martínez, Adra Yesenia","unidad":"Barrio La Paz","bautismo":"2026-07-25","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p6373c39d","nombre":"Osorio Gonzalez, Jose Luise","unidad":"Barrio La Paz","bautismo":"2026-08-09","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p7eb85de5","nombre":"Peralta Gutierrez, Tiffany Línette","unidad":"Barrio La Paz","bautismo":"2025-09-21","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pc5c77fed","nombre":"Perez Feliz, Altagracia Mencia","unidad":"Barrio La Paz","bautismo":"2026-03-29","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p58327d4e","nombre":"Peña Martínez, Yoscar Luís","unidad":"Barrio La Paz","bautismo":"2026-04-19","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Ramos, Jonathan Vincent / Carderon, Quemis Alberto","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pc42fc0e4","nombre":"Ten Aria, Lucia Altagracia","unidad":"Barrio La Paz","bautismo":"2026-06-21","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p764962be","nombre":"Alcantara Alcantara, Jeangel","unidad":"Barrio Piantini","bautismo":"2025-10-18","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Jean Baptiste, Paul Donny / Carvajal, Agustin David / Sabino Figuereo, Richard Isaac","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p0d9a2af3","nombre":"Báez Carvajal, Maia Crisandra","unidad":"Barrio Piantini","bautismo":"2026-04-26","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p53f34d76","nombre":"Carvajal Rodríguez, Alixandra","unidad":"Barrio Piantini","bautismo":"2026-04-26","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pa4c01e40","nombre":"Diaz, Yuneili María","unidad":"Barrio Piantini","bautismo":"2025-08-31","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Zorrilla Ozuna, Evelin / Moquete Perez, Leydi Nicole","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pa4c0d762","nombre":"Duran Almanzar, Maria Isabel","unidad":"Barrio Piantini","bautismo":"2025-12-28","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Gutierrez Rosario, Abril Alejandra / Gutiérrez, Georgina Romelia / Rosario Andújar, Génesis","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p6744a84c","nombre":"Feliz Hernandez, Moisés Andres","unidad":"Barrio Piantini","bautismo":"2026-02-07","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p6929a0af","nombre":"Gardon Carvajal, Andres Eduardo","unidad":"Barrio Piantini","bautismo":"2026-05-23","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p1f48abb0","nombre":"Isaac, Belton","unidad":"Barrio Piantini","bautismo":"2025-08-09","recomendacion":"Vence este mes","ministrantes":true,"ministrantesNota":"Martinez Veloz, Enmanuel Jose / Mestanza García, Gino Gennaro / Mestanza Villacorta, Carlos Ricardo Gino","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p2af8c510","nombre":"Ligonde, Dunette","unidad":"Barrio Piantini","bautismo":"2026-06-28","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Schell, Solene / Louissaint, Ismailinda","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p3e15d7db","nombre":"Marcelus, Willio","unidad":"Barrio Piantini","bautismo":"2026-08-09","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pfccc2121","nombre":"Martinez Disla, Vianny Zail","unidad":"Barrio Piantini","bautismo":"2025-12-28","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p075375ec","nombre":"Modesto Ruiz, Alden","unidad":"Barrio Piantini","bautismo":"2026-05-24","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pc479cd69","nombre":"Moquete Perez, Leydi Nicole","unidad":"Barrio Piantini","bautismo":"2025-09-28","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"De Los Santos Lagrange, Kristy Elisa / Andujar Troncoso, Yliani Virginia","nombreHF":false,"nombreHFNota":"","llamamiento":"Secretaria de Sociedad de Socorro","sacerdocio":"","notas":""},{"id":"p2ba3250a","nombre":"Perez Mendoza, Badir Enrique","unidad":"Barrio Piantini","bautismo":"2026-07-29","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p51e8392e","nombre":"Quevedo de Los Santos, Teresa Martina","unidad":"Barrio Piantini","bautismo":"2025-12-21","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Figuereo de Sabino, Nidia Alexandra / Perez Fernandez, Dayana / Duran Almanzar, Maria Isabel","nombreHF":false,"nombreHFNota":"","llamamiento":"Secretaria auxiliar de la Sociedad de Socorro","sacerdocio":"","notas":""},{"id":"pb26d471d","nombre":"Ramírez Carvajal, Christopher Alexander","unidad":"Barrio Piantini","bautismo":"2026-04-26","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p00568173","nombre":"Rosario Nuñez, Virgilio","unidad":"Barrio Piantini","bautismo":"2026-08-02","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p71bbbc07","nombre":"Sainteliat, Desly","unidad":"Barrio Piantini","bautismo":"2026-01-18","recomendacion":"Cancelada","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p0d0d5697","nombre":"Silfa Alcantara, Veronica","unidad":"Barrio Piantini","bautismo":"2025-10-18","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p509d1e06","nombre":"Silfa Encarnacion, Berenice","unidad":"Barrio Piantini","bautismo":"2025-10-18","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Arce, Nurys / Carvajal, Carmen Lisette","nombreHF":false,"nombreHFNota":"","llamamiento":"Miembro del comité de servicio de la Sociedad de Socorro","sacerdocio":"","notas":""},{"id":"pb58a0b9e","nombre":"Garcia Norvelus, Johnsley John","unidad":"Barrio Quisqueya","bautismo":"2026-03-21","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p52e5df5d","nombre":"Jiminian Rodrigues, Elíseo Josué","unidad":"Barrio Quisqueya","bautismo":"2025-09-21","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pcc46a71f","nombre":"Jiminian, Pablo Elias","unidad":"Barrio Quisqueya","bautismo":"2025-09-21","recomendacion":"","ministrantes":true,"ministrantesNota":"Campusano Reyes, Raul Josue / Echavarria Rosario, Hotiel / Batista Montilla, Gabriel Gaby","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pb1582813","nombre":"Lara De Jesús, Felix Jose","unidad":"Barrio Quisqueya","bautismo":"2026-08-15","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pf7b9f622","nombre":"Montero, Amauris","unidad":"Barrio Quisqueya","bautismo":"2025-08-02","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Agramonte Segura, Jhon Antoni / Peña Grullon, Joshua / Agramonte Vargas, Luis Ney","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p339e8019","nombre":"Méndez Rodríguez, Frank José","unidad":"Barrio Quisqueya","bautismo":"2025-10-12","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p3d37aded","nombre":"Orozco Almonte, Janna","unidad":"Barrio Quisqueya","bautismo":"2025-11-29","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pe3924eb7","nombre":"Paulino García, Francis Javier","unidad":"Barrio Quisqueya","bautismo":"2026-02-07","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"García De Los Santos, Carlos Esteban / Brito Lopez, Tony Omar / Rosa, Yadiel Alejandro","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pf4e618e6","nombre":"Paulino García, Miguel Ángel","unidad":"Barrio Quisqueya","bautismo":"2026-02-07","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p1c08e357","nombre":"Pierre, Berly","unidad":"Barrio Quisqueya","bautismo":"2026-07-11","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"Primera consejera de la clase Guardianas de luz","sacerdocio":"","notas":""},{"id":"p2dac04f1","nombre":"Rondón Bautista, Jeferson Manuel","unidad":"Barrio Quisqueya","bautismo":"2025-12-13","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Cespedes Baez, Ezequiel Mariano / Gerardo Valdez, Victor Jose / Piñeyro Aracena, Joan Francisco","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p8ba230ac","nombre":"Rosa, Yadiel Alejandro","unidad":"Barrio Quisqueya","bautismo":"2026-03-21","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Medina Bracho, Maikoll Jesus / Medina Paniagua, Alejandro Alexis / Castaño Francisco, Carlos David","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pd5fd8d39","nombre":"Abreu Bartazar, Erick Alberto","unidad":"Rama Los Arroyos","bautismo":"2026-03-01","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Casado, Mario Emilio / Cruz Almonte, Juan Javier","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p3ca3238f","nombre":"Bruno Louis, Jeremy","unidad":"Rama Los Arroyos","bautismo":"2026-01-11","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pa545f510","nombre":"Calderón, Edily Pamela","unidad":"Rama Los Arroyos","bautismo":"2025-11-30","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p68a3df0a","nombre":"Calderón, Willy Alberto","unidad":"Rama Los Arroyos","bautismo":"2025-08-31","recomendacion":"Vence el próximo mes","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p388aa14a","nombre":"Calderón, Yeimy María","unidad":"Rama Los Arroyos","bautismo":"2025-09-14","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Guzmán de Ruiz, Amarilis Altagracia / Heredia Lora, Ambar Michel","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pd9fec5f2","nombre":"Charles, Jose","unidad":"Rama Los Arroyos","bautismo":"2026-03-29","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p9023b568","nombre":"Claivoyant, Mirlande","unidad":"Rama Los Arroyos","bautismo":"2026-04-19","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Almonte, Victoria / Almonte, Hemillene Jenelssis / De la Cruz Cruz, Antony José / Gonzalez Jorge, Ramirez","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p0eaffa4e","nombre":"De Oleo Ramírez, Wanda Estheissy","unidad":"Rama Los Arroyos","bautismo":"2025-08-31","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p47132ee5","nombre":"De Paula Vicente, Yeiry Junior","unidad":"Rama Los Arroyos","bautismo":"2025-11-14","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p60e95bdd","nombre":"Encarnacion Montero, Argentino","unidad":"Rama Los Arroyos","bautismo":"2026-06-21","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p483f6c8b","nombre":"Esteves Mora, Manuel Smith","unidad":"Rama Los Arroyos","bautismo":"2026-06-14","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p8a5fd8d0","nombre":"Feliciano Ladoucer, Keli","unidad":"Rama Los Arroyos","bautismo":"2025-12-07","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pfbeba026","nombre":"Feliciano Ladoucer, Sandy","unidad":"Rama Los Arroyos","bautismo":"2026-01-11","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pdd34edc3","nombre":"Gonzales, Daniela Mercedes","unidad":"Rama Los Arroyos","bautismo":"2025-12-07","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pdc3a29b6","nombre":"Guzmán, Juán Ramón","unidad":"Rama Los Arroyos","bautismo":"2025-10-12","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pec6a6620","nombre":"Heredia Lora, Ambar Michel","unidad":"Rama Los Arroyos","bautismo":"2025-12-21","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Almonte, Victoria / Almonte, Hemillene Jenelssis","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pde3430fd","nombre":"Herrera Rodriguez, Joan Antonio","unidad":"Rama Los Arroyos","bautismo":"2026-06-14","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"pda76be3b","nombre":"Jiménez Sosa, Arcadeo Maria","unidad":"Rama Los Arroyos","bautismo":"2026-05-24","recomendacion":"","ministrantes":true,"ministrantesNota":"Pierre Louis, John Kerry / Valdez Marte, Alfredo","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p7db66f84","nombre":"Joseph, Ana Victoria","unidad":"Rama Los Arroyos","bautismo":"2025-11-09","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pa5c4f197","nombre":"Jovin, Gertha","unidad":"Rama Los Arroyos","bautismo":"2026-05-10","recomendacion":"","ministrantes":true,"ministrantesNota":"Dononcourt, Suzanna / Feliz Montero, Ana Maria / De la Cruz Cruz, Antony José / Gonzalez Jorge, Ramirez","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p1da9361a","nombre":"Martínez, Iam","unidad":"Rama Los Arroyos","bautismo":"2025-11-09","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p683dafa1","nombre":"Mercedes González, Yennifer","unidad":"Rama Los Arroyos","bautismo":"2026-03-01","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p4fe1ee82","nombre":"Morillo Perez, Jose Rafael","unidad":"Rama Los Arroyos","bautismo":"2026-06-14","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pd0eea8eb","nombre":"Mételus, Jefri","unidad":"Rama Los Arroyos","bautismo":"2025-11-16","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p2a5df99b","nombre":"Oliver, Anthony","unidad":"Rama Los Arroyos","bautismo":"2026-04-19","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p4c1ed1b8","nombre":"Polaco González, Alejandro","unidad":"Rama Los Arroyos","bautismo":"2025-08-24","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pdeab6324","nombre":"Polanco, Stiven","unidad":"Rama Los Arroyos","bautismo":"2026-06-28","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"pcabb0c1f","nombre":"Pérez Arias, Bernarda","unidad":"Rama Los Arroyos","bautismo":"2026-07-16","recomendacion":"Activa","ministrantes":true,"ministrantesNota":"Dononcourt, Suzanna / Feliz Montero, Ana Maria","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pb78b991a","nombre":"Ramírez Ogando, Emanuel","unidad":"Rama Los Arroyos","bautismo":"2025-12-21","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p91999878","nombre":"Ramírez, Raulín Ramón","unidad":"Rama Los Arroyos","bautismo":"2026-02-15","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p0d766e83","nombre":"Renard Meus, Gabriela","unidad":"Rama Los Arroyos","bautismo":"2026-01-11","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pe4452731","nombre":"Rodriguez Lora, Yuleini","unidad":"Rama Los Arroyos","bautismo":"2025-10-12","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pb50bdc10","nombre":"Silé, Chelo","unidad":"Rama Los Arroyos","bautismo":"2026-03-29","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p78e3ceb1","nombre":"Silé, Yenica","unidad":"Rama Los Arroyos","bautismo":"2026-01-18","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p38904994","nombre":"Similis Valenzuela, Mica","unidad":"Rama Los Arroyos","bautismo":"2026-01-11","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"pd1f1a3e7","nombre":"Suarez Perez, Coral","unidad":"Rama Los Arroyos","bautismo":"2026-08-16","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p144d23d8","nombre":"Tejada Martes, Angel Daniel","unidad":"Rama Los Arroyos","bautismo":"2026-07-26","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p174701ca","nombre":"Ulises, Rose Berle","unidad":"Rama Los Arroyos","bautismo":"2026-02-22","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"","notas":""},{"id":"p2de8a7c1","nombre":"Vasquez Martinez, Iam","unidad":"Rama Los Arroyos","bautismo":"2025-11-09","recomendacion":"","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"No ha sido ordenado","notas":""},{"id":"p789fbf1d","nombre":"Ventura De La Rosa, Moisés","unidad":"Rama Los Arroyos","bautismo":"2025-09-28","recomendacion":"Activa","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""},{"id":"p99d5c909","nombre":"Ventura Suriel, Josue","unidad":"Rama Los Arroyos","bautismo":"2025-08-31","recomendacion":"Vence el próximo mes","ministrantes":false,"ministrantesNota":"","nombreHF":false,"nombreHFNota":"","llamamiento":"","sacerdocio":"Aarónico","notas":""}];
+const CLAVE = 'estaca-central-conversos-v1';
+
+const PASOS = [
+  {k:'recomendacion', et:'Recomendación', full:'Recomendación para el templo'},
+  {k:'ministrantes',  et:'Ministrantes',  full:'Hermanos o hermanas ministrantes asignados'},
+  {k:'nombreHF',      et:'Nombre en HF',  full:'Primer nombre registrado en Historia Familiar'},
+  {k:'llamamiento',   et:'Llamamiento',   full:'Llamamiento o asignación'}
+];
+const RECS = ['','Activa','Vence este mes','Vence el próximo mes','Cancelada'];
+const SAC  = ['','No ha sido ordenado','Aarónico','Melquisedec'];
+const UNIDADES = ['Barrio Bella Vista','Barrio Cristo Rey','Barrio La Fe','Barrio La Paz','Barrio Piantini','Barrio Quisqueya','Rama Los Arroyos'];
+
+let estado = {personas: []};
+let tab = 'panel';
+let busca = '';
+let soloPend = false;
+let guardando = null;
+
+/* ---------- Utilidades ---------- */
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tieneRec = p => p.recomendacion && p.recomendacion !== 'Cancelada';
+const recVence = p => p.recomendacion === 'Vence este mes' || p.recomendacion === 'Vence el próximo mes';
+const tieneLlam = p => !!(p.llamamiento && p.llamamiento.trim());
+const aplicaSac = p => !!p.sacerdocio;
+const tieneSac  = p => p.sacerdocio === 'Aarónico' || p.sacerdocio === 'Melquisedec';
+const hecho = (p,k) => k==='recomendacion' ? tieneRec(p) : k==='llamamiento' ? tieneLlam(p) : !!p[k];
+const puntaje = p => PASOS.reduce((n,s)=> n + (hecho(p,s.k)?1:0), 0);
+const conversos = () => estado.personas;
+const fechaCorta = f => {
+  if(!f) return 'Sin fecha';
+  const M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const [a,m,d]=f.split('-'); return `${+d} ${M[+m-1]} ${a}`;
+};
+const pct = (a,b) => b ? Math.round(a/b*100) : 0;
+
+/* ---------- Guardado (servidor) ---------- */
+const API = '/api/datos';
+let codigo = '';
+try{ codigo = localStorage.getItem('cec_codigo') || ''; }catch(e){}
+let sucios = new Set(), pendiente = null, ultimoSync = 0;
+
+function marcar(txt, ok=true){
+  document.getElementById('pEstado').textContent = txt;
+  document.getElementById('pDot').className = 'punto' + (ok?'':' off');
+}
+const hora = () => new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+
+async function pedir(metodo, cuerpo){
+  const r = await fetch(API, {
+    method: metodo,
+    headers: Object.assign({'Content-Type':'application/json'}, codigo ? {'x-codigo':codigo} : {}),
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined
+  });
+  if(r.status === 401){ const e = new Error('codigo'); e.codigo = true; throw e; }
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || `Error ${r.status}`);
+  return j;
+}
+
+function guardar(ids){
+  (Array.isArray(ids) ? ids : ids ? [ids] : estado.personas.map(p=>p.id)).forEach(i=>sucios.add(i));
+  clearTimeout(pendiente);
+  marcar('Guardando…');
+  pendiente = setTimeout(async ()=>{
+    const lote = estado.personas.filter(p=>sucios.has(p.id));
+    const ids2 = new Set(lote.map(p=>p.id));
+    try{
+      await pedir('POST', {guardar: lote});
+      ids2.forEach(i=>sucios.delete(i));
+      ultimoSync = Date.now();
+      marcar('Guardado · ' + hora());
+    }catch(e){
+      if(e.codigo){ pedirCodigo(); return; }
+      marcar('No se guardó: ' + e.message + '. Se reintenta al hacer otro cambio.', false);
+    }
+  }, 500);
+}
+
+async function borrarRemoto(id){
+  estado.personas = estado.personas.filter(p=>p.id!==id);
+  sucios.delete(id);
+  try{ await pedir('POST', {borrar:[id]}); marcar('Guardado · ' + hora()); }
+  catch(e){ if(e.codigo) pedirCodigo(); else marcar('No se pudo eliminar: ' + e.message, false); }
+}
+
+function pedirCodigo(){
+  document.getElementById('modal').innerHTML = `
+    <h3 id="mTitulo">Código de acceso</h3>
+    <p class="nota">Esta lista tiene datos de miembros. Pide el código a quien administra la página.</p>
+    <div class="campo"><label>Código</label><input type="password" id="c_codigo" autocomplete="off"></div>
+    <div class="acciones"><button class="btn primario" id="c_entrar">Entrar</button></div>`;
+  document.getElementById('velo').classList.add('abierto');
+  const inp = document.getElementById('c_codigo');
+  setTimeout(()=>inp.focus(), 60);
+  const entrar = async ()=>{
+    codigo = inp.value.trim();
+    try{ localStorage.setItem('cec_codigo', codigo); }catch(e){}
+    document.getElementById('velo').classList.remove('abierto');
+    await cargar(); pintar();
+  };
+  document.getElementById('c_entrar').onclick = entrar;
+  inp.onkeydown = e => { if(e.key==='Enter') entrar(); };
+}
+
+async function cargar(){
+  try{
+    const d = await pedir('GET');
+    if(!d.personas || !d.personas.length){
+      estado.personas = SEED.slice();
+      await pedir('POST', {guardar: estado.personas});
+      marcar('Lista creada con los ' + SEED.length + ' registros del informe');
+    }else{
+      estado.personas = d.personas;
+      marcar('Al día · ' + hora());
+    }
+    ultimoSync = Date.now();
+  }catch(e){
+    if(e.codigo){ estado.personas = []; pedirCodigo(); return; }
+    estado.personas = SEED.slice();
+    marcar('Sin conexión con el servidor (' + e.message + '). Los cambios no se guardan.', false);
+  }
+}
+
+// Refresco automático: trae lo que otros hayan marcado, sin pisar tus cambios pendientes
+async function refrescar(){
+  if(sucios.size || document.getElementById('velo').classList.contains('abierto')) return;
+  if(document.hidden) return;
+  try{
+    const d = await pedir('GET');
+    if(d.personas && d.personas.length && JSON.stringify(d.personas) !== JSON.stringify(estado.personas)){
+      estado.personas = d.personas; pintar(); marcar('Actualizado · ' + hora());
+    }
+  }catch(e){}
+}
+setInterval(refrescar, 45000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refrescar(); });
+
+/* ---------- Pestañas ---------- */
+function pintarTabs(){
+  const t = document.getElementById('tabs');
+  const items = [{id:'panel', nom:'Panel de la estaca', n:conversos().length}]
+    .concat(unidadesActivas().map(u=>({id:u, nom:u.replace('Barrio ','').replace('Rama ',''), n:estado.personas.filter(p=>p.unidad===u).length})));
+  t.innerHTML = items.map(i=>
+    `<button class="tab" role="tab" aria-selected="${i.id===tab}" data-tab="${esc(i.id)}">${esc(i.nom)}<span class="n">${i.n}</span></button>`).join('');
+  t.querySelectorAll('.tab').forEach(b=> b.onclick = ()=>{ tab=b.dataset.tab; busca=''; pintar(); window.scrollTo({top:0,behavior:'smooth'}); });
+}
+function unidadesActivas(){
+  const s = new Set(UNIDADES);
+  estado.personas.forEach(p=>s.add(p.unidad));
+  return [...s].sort((a,b)=>a.localeCompare(b,'es'));
+}
+
+/* ---------- Panel ---------- */
+function panelHTML(){
+  const L = conversos(), T = L.length;
+  const cards = [
+    ['Con recomendación para el templo', L.filter(tieneRec).length, T],
+    ['Con hermanos o hermanas ministrantes', L.filter(p=>p.ministrantes).length, T],
+    ['Con su primer nombre registrado en HF', L.filter(p=>p.nombreHF).length, T],
+    ['Con llamamiento o asignación', L.filter(tieneLlam).length, T],
+    ['Hermanos ordenados al sacerdocio', L.filter(tieneSac).length, L.filter(aplicaSac).length]
+  ];
+  let h = `<h2 class="sec">Cómo va la estaca</h2>
+  <p class="nota">${T} conversos en ${unidadesActivas().length} unidades. Cada porcentaje se calcula solo con lo que está marcado abajo.</p>
+  <div class="grid-stats">` +
+  cards.map(([t,a,b])=>`<div class="stat"><h3>${esc(t)}</h3><div class="pct">${pct(a,b)}%</div>
+    <div class="frac">${a} de ${b}</div><div class="barra"><i style="width:${pct(a,b)}%"></i></div></div>`).join('') +
+  `</div>`;
+
+  // Mosaico
+  const col = n => ['#E7EBE6','#CFE2D8','#9FCBB9','#5EA48D','#1F6F5C'][n];
+  h += `<h2 class="sec">Un cuadro por converso</h2>
+  <p class="nota">El color muestra cuántos de los cuatro pasos lleva cada persona. Toca un cuadro para abrir su ficha.</p>
+  <div class="mosaico">` +
+  L.slice().sort((a,b)=>puntaje(a)-puntaje(b)).map(p=>{
+    const n = puntaje(p);
+    return `<button class="tile" style="background:${col(n)}" data-abrir="${p.id}" title="${esc(p.nombre)} — ${n} de 4" aria-label="${esc(p.nombre)}, ${n} de 4 pasos"></button>`;
+  }).join('') + `</div>
+  <div class="leyenda">` + [0,1,2,3,4].map(n=>`<span><i class="sw" style="background:${col(n)}"></i>${n} de 4</span>`).join('') + `</div>`;
+
+  // Tabla por unidad
+  h += `<h2 class="sec">Por unidad</h2>
+  <table class="unidades"><thead><tr><th>Unidad</th><th style="text-align:right">Conversos</th>
+  <th style="text-align:right">Recom.</th><th style="text-align:right">Minist.</th><th style="text-align:right">Nombre HF</th>
+  <th style="text-align:right">Llamam.</th></tr></thead><tbody>` +
+  unidadesActivas().map(u=>{
+    const g = L.filter(p=>p.unidad===u), n=g.length;
+    const c = f => `<td class="num">${pct(g.filter(f).length,n)}%</td>`;
+    return `<tr><td>${esc(u)}</td><td class="num">${n}</td>${c(tieneRec)}${c(p=>p.ministrantes)}${c(p=>p.nombreHF)}${c(tieneLlam)}</tr>`;
+  }).join('') + `</tbody></table>
+  <h2 class="sec">Mantener la lista al día</h2>
+  <p class="nota">Exporta el informe «Conversos recientes» desde LCR (Excel o CSV) y súbelo aquí. Se añaden los bautismos nuevos y se actualizan recomendación, llamamiento, sacerdocio y ministrantes. Lo que marques de nombre en HF no se toca.</p>
+  <div class="tools">
+    <button class="btn primario" data-importar="1">Actualizar desde el informe de LCR</button>
+    <button class="btn" data-csv="1">Descargar respaldo (CSV)</button>
+    <input type="file" id="archivo" accept=".xlsx,.xls,.csv" style="display:none">
+  </div>`;
+  return h;
+}
+
+/* ---------- Unidad ---------- */
+function unidadHTML(u){
+  let L = estado.personas.filter(p=>p.unidad===u);
+  const total = L.length;
+  if(busca) L = L.filter(p=>p.nombre.toLowerCase().includes(busca.toLowerCase()));
+  if(soloPend) L = L.filter(p=>puntaje(p)<PASOS.length);
+  L.sort((a,b)=> (b.bautismo||'').localeCompare(a.bautismo||'') || a.nombre.localeCompare(b.nombre,'es'));
+
+  let h = `<div class="tools">
+    <input class="buscar" type="text" id="q" placeholder="Buscar por nombre" value="${esc(busca)}" aria-label="Buscar por nombre">
+    <label class="toggle-filtro"><input type="checkbox" id="pend" ${soloPend?'checked':''}> Solo con algo pendiente</label>
+    <button class="btn primario" data-nuevo="${esc(u)}">Añadir converso</button>
+  </div>`;
+
+  if(!L.length){
+    h += `<div class="vacio">${total ? 'Ningún nombre coincide con ese filtro.' : 'Aún no hay conversos en esta unidad. Usa «Añadir converso» para registrar el primero.'}</div>`;
+    return h;
+  }
+  h += L.map(filaHTML).join('');
+  h += `<p class="nota" style="margin-top:14px">${L.length} de ${total} conversos${soloPend?' con algo pendiente':''}.</p>`;
+  return h;
+}
+
+function filaHTML(p){
+  const n = puntaje(p), listo = n===PASOS.length;
+  const check = `<svg viewBox="0 0 10 10" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.2 3.9 7.6 8.5 2.4"/></svg>`;
+  const chips = PASOS.map(s=>{
+    const on = hecho(p,s.k);
+    const aviso = s.k==='recomendacion' && recVence(p);
+    let et = s.et;
+    if(s.k==='recomendacion' && p.recomendacion==='Cancelada') et='Recom. cancelada';
+    if(aviso) et = p.recomendacion;
+    return `<button class="chip${aviso?' aviso':''}" aria-pressed="${on}" data-tog="${p.id}|${s.k}" title="${esc(s.full)}">
+      <span class="caja">${check}</span>${esc(et)}</button>`;
+  }).join('');
+  const sac = aplicaSac(p)
+    ? `<button class="chip" aria-pressed="${tieneSac(p)}" data-abrir="${p.id}" title="Sacerdocio: ${esc(p.sacerdocio)}"><span class="caja">${check}</span>${esc(tieneSac(p)?p.sacerdocio:'Sin ordenar')}</button>`
+    : `<button class="chip na" data-abrir="${p.id}" title="Sin registro de sacerdocio"><span class="caja"></span>Sacerdocio —</button>`;
+  return `<div class="persona${listo?' completo':''}">
+    <div class="quien">
+      <div class="nom">${esc(p.nombre)}</div>
+      <div class="meta">Bautismo ${fechaCorta(p.bautismo)} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
+    </div>
+    <div class="cintas">${chips}${sac}</div>
+    <button class="abrir" data-abrir="${p.id}" title="Abrir ficha" aria-label="Abrir ficha de ${esc(p.nombre)}">›</button>
+  </div>`;
+}
+
+/* ---------- Acciones ---------- */
+function alternar(id, campo){
+  const p = estado.personas.find(x=>x.id===id); if(!p) return;
+  if(campo==='recomendacion'){ p.recomendacion = tieneRec(p) ? '' : 'Activa'; }
+  else if(campo==='llamamiento'){ if(tieneLlam(p)) p.llamamiento=''; else { abrirFicha(id, 'llamamiento'); return; } }
+  else p[campo] = !p[campo];
+  guardar(p.id); pintar();
+}
+
+function abrirFicha(id, foco){
+  const p = estado.personas.find(x=>x.id===id); if(!p) return;
+  const sel = (arr,val) => arr.map(o=>`<option value="${esc(o)}" ${o===val?'selected':''}>${esc(o||'— Sin registro —')}</option>`).join('');
+  document.getElementById('modal').innerHTML = `
+    <h3 id="mTitulo">${esc(p.nombre)}</h3>
+    <p class="nota">${esc(p.unidad)} · Bautismo ${fechaCorta(p.bautismo)}</p>
+    <div class="campo"><label>Nombre de preferencia</label><input type="text" id="f_nombre" value="${esc(p.nombre)}"></div>
+    <div class="fila2">
+      <div class="campo"><label>Unidad</label><select id="f_unidad">${sel(unidadesActivas(), p.unidad)}</select></div>
+      <div class="campo"><label>Fecha del bautismo</label><input type="date" id="f_bautismo" value="${esc(p.bautismo)}"></div>
+    </div>
+    <div class="campo"><label>Recomendación para el templo</label><select id="f_rec">${sel(RECS,p.recomendacion)}</select></div>
+    <div class="campo"><label>Llamamiento o asignación</label><input type="text" id="f_llam" value="${esc(p.llamamiento)}" placeholder="Ej. Secretaria de Primaria"></div>
+    <div class="campo"><label>Sacerdocio</label><select id="f_sac">${sel(SAC,p.sacerdocio)}</select></div>
+    <div class="campo"><label>Primer nombre registrado en Historia Familiar</label>
+      <input type="text" id="f_hfnota" value="${esc(p.nombreHFNota)}" placeholder="Nombre del antepasado registrado (opcional)"></div>
+    <div class="campo"><label>Ministrantes asignados (referencia)</label>
+      <input type="text" id="f_minnota" value="${esc(p.ministrantesNota)}" placeholder="Nombres, si los quieres anotar"></div>
+    <div class="campo"><label>Notas</label><textarea id="f_notas" rows="2" placeholder="Necesidades, seguimiento, quién visita">${esc(p.notas)}</textarea></div>
+    <div class="recordatorio">Los distintivos de la lista (nombre en HF, ministrantes) se marcan con un toque desde la lista. Aquí solo se anotan los detalles.</div>
+    <div class="acciones">
+      <button class="btn primario" id="f_guardar">Guardar cambios</button>
+      <button class="btn" id="f_cerrar">Cancelar</button>
+      <button class="btn peligro sutil" id="f_borrar" title="Eliminar registro">Eliminar</button>
+    </div>`;
+  document.getElementById('velo').classList.add('abierto');
+  const cerrar = ()=> document.getElementById('velo').classList.remove('abierto');
+  document.getElementById('f_cerrar').onclick = cerrar;
+  document.getElementById('f_guardar').onclick = ()=>{
+    p.nombre = document.getElementById('f_nombre').value.trim() || p.nombre;
+    p.unidad = document.getElementById('f_unidad').value;
+    p.bautismo = document.getElementById('f_bautismo').value;
+    p.recomendacion = document.getElementById('f_rec').value;
+    p.llamamiento = document.getElementById('f_llam').value.trim();
+    p.sacerdocio = document.getElementById('f_sac').value;
+    p.nombreHFNota = document.getElementById('f_hfnota').value.trim();
+    p.ministrantesNota = document.getElementById('f_minnota').value.trim();
+    p.notas = document.getElementById('f_notas').value.trim();
+    if(p.nombreHFNota) p.nombreHF = true;
+    cerrar(); guardar(p.id); pintar();
+  };
+  document.getElementById('f_borrar').onclick = ()=>{
+    if(!confirm(`¿Eliminar a ${p.nombre} de la lista? Esta acción no se puede deshacer.`)) return;
+    cerrar(); borrarRemoto(p.id).then(pintar);
+  };
+  if(foco==='llamamiento') setTimeout(()=>document.getElementById('f_llam').focus(), 60);
+}
+
+function nuevaFicha(unidad){
+  const sel = UNIDADES.map(o=>`<option ${o===unidad?'selected':''}>${esc(o)}</option>`).join('');
+  document.getElementById('modal').innerHTML = `
+    <h3 id="mTitulo">Añadir converso</h3>
+    <p class="nota">Registra a quien se bautizó recientemente. Luego marca sus pasos desde la lista.</p>
+    <div class="campo"><label>Nombre de preferencia</label><input type="text" id="n_nombre" placeholder="Apellidos, Nombres"></div>
+    <div class="fila2">
+      <div class="campo"><label>Unidad</label><select id="n_unidad">${sel}</select></div>
+      <div class="campo"><label>Fecha del bautismo</label><input type="date" id="n_bautismo"></div>
+    </div>
+    <div class="campo"><label>Sacerdocio</label><select id="n_sac">${SAC.map(o=>`<option value="${esc(o)}">${esc(o||'— Sin registro (hermana) —')}</option>`).join('')}</select></div>
+    <div class="acciones">
+      <button class="btn primario" id="n_guardar">Añadir a la lista</button>
+      <button class="btn" id="n_cerrar">Cancelar</button>
+    </div>`;
+  document.getElementById('velo').classList.add('abierto');
+  const cerrar = ()=> document.getElementById('velo').classList.remove('abierto');
+  document.getElementById('n_cerrar').onclick = cerrar;
+  setTimeout(()=>document.getElementById('n_nombre').focus(), 60);
+  document.getElementById('n_guardar').onclick = ()=>{
+    const nom = document.getElementById('n_nombre').value.trim();
+    if(!nom){ document.getElementById('n_nombre').focus(); return; }
+    const nid = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    estado.personas.push({
+      id:nid,
+      nombre:nom, unidad:document.getElementById('n_unidad').value,
+      bautismo:document.getElementById('n_bautismo').value, recomendacion:'',
+      ministrantes:false, ministrantesNota:'', nombreHF:false, nombreHFNota:'',
+      llamamiento:'', sacerdocio:document.getElementById('n_sac').value, notas:''
+    });
+    tab = document.getElementById('n_unidad').value;
+    cerrar(); guardar(nid); pintar();
+  };
+}
+
+/* ---------- Importar el informe de LCR ---------- */
+const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+
+function cargarSheetJS(){
+  if(window.XLSX) return Promise.resolve(true);
+  return new Promise(res=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = ()=>res(true); s.onerror = ()=>res(false);
+    document.head.appendChild(s);
+  });
+}
+function parseCSV(txt){
+  const filas=[]; let f=[], c='', q=false;
+  for(let i=0;i<txt.length;i++){
+    const ch=txt[i];
+    if(q){ if(ch==='"'){ if(txt[i+1]==='"'){c+='"';i++;} else q=false; } else c+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){ f.push(c); c=''; }
+    else if(ch==='\n'){ f.push(c); filas.push(f); f=[]; c=''; }
+    else if(ch!=='\r') c+=ch;
+  }
+  if(c||f.length){ f.push(c); filas.push(f); }
+  return filas;
+}
+function aISO(v){
+  if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
+  const s = String(v||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const M={ene:1,feb:2,mar:3,abr:4,may:5,mayo:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+  const m = s.toLowerCase().match(/^(\d{1,2})\s+([a-zé]+)\.?\s+(\d{4})$/);
+  if(m && M[m[2].slice(0,4)]!==undefined) return `${m[3]}-${String(M[m[2].slice(0,4)]??M[m[2].slice(0,3)]).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  if(m && M[m[2].slice(0,3)]) return `${m[3]}-${String(M[m[2].slice(0,3)]).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return '';
+}
+function filasARegistros(filas){
+  const idx = filas.findIndex(f => f.some(c => String(c).trim()==='Nombre de preferencia'));
+  if(idx < 0) throw new Error('No encontré la fila de encabezados («Nombre de preferencia»). ¿Es el informe de conversos recientes?');
+  const cab = filas[idx].map(c => norm(c));
+  const col = n => cab.indexOf(norm(n));
+  const C = {
+    nombre: col('Nombre de preferencia'), unidad: col('Unidad'), conv: col('Es converso'),
+    rec: col('Estado de la recomendación para el templo'), bau: col('Fecha del bautismo'),
+    hnas: col('Hermanas ministrantes'), hnos: col('Hermanos ministrantes'),
+    llam: col('Llamamientos'), sac: col('Sacerdocio'),
+    thnas: col('Tiene hermanas ministrantes'), thnos: col('Tiene hermanos ministrantes')
+  };
+  const out=[];
+  for(let i=0;i<filas.length;i++){
+    if(i===idx) continue;
+    const f = filas[i]; if(!f) continue;
+    const g = k => k>=0 && f[k]!==undefined && f[k]!==null ? f[k] : '';
+    const nom = String(g(C.nombre)).trim(), uni = String(g(C.unidad)).trim();
+    if(!nom || !uni || /^Recuento/i.test(nom) || nom==='Nombre de preferencia') continue;
+    if(String(g(C.conv)).trim()==='No') continue;   // el informe marca a quien no es converso reciente
+    const nota = [String(g(C.hnas)).trim(), String(g(C.hnos)).trim()].filter(Boolean).join(' / ');
+    out.push({
+      nombre:nom, unidad:uni, bautismo:aISO(g(C.bau)),
+      recomendacion:String(g(C.rec)).trim(), llamamiento:String(g(C.llam)).trim(), sacerdocio:String(g(C.sac)).trim(),
+      ministrantes: String(g(C.thnas)).trim()==='Sí' || String(g(C.thnos)).trim()==='Sí' || !!nota,
+      ministrantesNota: nota
+    });
+  }
+  if(!out.length) throw new Error('El archivo no traía filas de personas.');
+  return out;
+}
+
+async function importar(file){
+  let filas;
+  try{
+    if(/\.csv$/i.test(file.name)){
+      filas = parseCSV(await file.text());
+    }else{
+      const ok = await cargarSheetJS();
+      if(!ok) throw new Error('No pude cargar el lector de Excel (quizá no hay internet). Vuelve a exportar el informe como CSV e inténtalo otra vez.');
+      const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:true});
+      filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:'', raw:false, cellDates:true});
+    }
+    var regs = filasARegistros(filas);
+  }catch(e){ avisoImport(`<p class="nota">${esc(e.message)}</p>`); return; }
+
+  const mapa = new Map(estado.personas.map(p=>[norm(p.nombre), p]));
+  const nuevos=[], cambios=[];
+  regs.forEach(r=>{
+    const p = mapa.get(norm(r.nombre));
+    if(!p){ nuevos.push(r); return; }
+    const dif=[];
+    if(r.recomendacion !== p.recomendacion) dif.push(['recomendacion','Recomendación', p.recomendacion||'sin registro', r.recomendacion||'sin registro']);
+    if(r.llamamiento !== p.llamamiento) dif.push(['llamamiento','Llamamiento', p.llamamiento||'ninguno', r.llamamiento||'ninguno']);
+    if(r.sacerdocio !== p.sacerdocio) dif.push(['sacerdocio','Sacerdocio', p.sacerdocio||'sin registro', r.sacerdocio||'sin registro']);
+    if(r.ministrantes && !p.ministrantes) dif.push(['ministrantes','Ministrantes','no','sí']);
+    if(r.unidad !== p.unidad) dif.push(['unidad','Unidad', p.unidad, r.unidad]);
+    if(r.bautismo && r.bautismo !== p.bautismo) dif.push(['bautismo','Bautismo', p.bautismo||'sin fecha', r.bautismo]);
+    if(dif.length) cambios.push({p, r, dif});
+  });
+  const enInforme = new Set(regs.map(r=>norm(r.nombre)));
+  const ausentes = estado.personas.filter(p=>!enInforme.has(norm(p.nombre)));
+
+  let h = `<h3 id="mTitulo">Revisión del informe</h3>
+    <p class="nota">${regs.length} personas en el archivo. Nada se aplica hasta que confirmes.</p>`;
+  h += `<div class="recordatorio"><strong>${nuevos.length}</strong> por añadir · <strong>${cambios.length}</strong> por actualizar · <strong>${ausentes.length}</strong> en tu lista que no vienen en el informe (no se tocan).</div>`;
+  if(nuevos.length) h += `<div class="campo"><label>Se añadirán</label><div style="font-size:13px;line-height:1.7">${nuevos.map(n=>`${esc(n.nombre)} <span class="etiqueta">${esc(n.unidad.replace('Barrio ','').replace('Rama ',''))}</span>`).join('<br>')}</div></div>`;
+  if(cambios.length) h += `<div class="campo"><label>Se actualizarán</label><div style="font-size:13px;line-height:1.6">${cambios.map(c=>
+      `<div style="margin-bottom:7px"><strong>${esc(c.p.nombre)}</strong><br>${c.dif.map(d=>`<span style="color:var(--tinta-suave)">${esc(d[1])}: ${esc(d[2])} → ${esc(d[3])}</span>`).join('<br>')}</div>`).join('')}</div>`;
+  if(ausentes.length) h += `<div class="campo"><label>No aparecen en el informe</label><div style="font-size:13px;color:var(--tinta-suave)">${ausentes.map(p=>esc(p.nombre)).join(', ')}</div></div>`;
+  if(!nuevos.length && !cambios.length) h += `<p class="nota">Tu lista ya coincide con el informe. No hay nada que cambiar.</p>`;
+  h += `<div class="acciones">
+      ${(nuevos.length||cambios.length) ? `<button class="btn primario" id="i_aplicar">Aplicar cambios</button>` : ''}
+      <button class="btn" id="i_cerrar">${(nuevos.length||cambios.length)?'Cancelar':'Cerrar'}</button></div>`;
+  avisoImport(h, ()=>{
+    const tocados = [];
+    nuevos.forEach(r=>{
+      const id = 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      estado.personas.push(Object.assign({id, nombreHF:false, nombreHFNota:'', notas:''}, r));
+      tocados.push(id);
+    });
+    cambios.forEach(c=>{
+      c.dif.forEach(d=>{
+        if(d[0]==='ministrantes'){ c.p.ministrantes = true; c.p.ministrantesNota = c.r.ministrantesNota; }
+        else c.p[d[0]] = c.r[d[0]];
+      });
+      tocados.push(c.p.id);
+    });
+    guardar(tocados); pintar();
+  });
+}
+function avisoImport(html, alAplicar){
+  document.getElementById('modal').innerHTML = html.startsWith('<h3') ? html
+    : `<h3 id="mTitulo">No se pudo leer el archivo</h3>${html}<div class="acciones"><button class="btn" id="i_cerrar">Cerrar</button></div>`;
+  document.getElementById('velo').classList.add('abierto');
+  const cerrar = ()=> document.getElementById('velo').classList.remove('abierto');
+  const bc = document.getElementById('i_cerrar'); if(bc) bc.onclick = cerrar;
+  const ba = document.getElementById('i_aplicar');
+  if(ba && alAplicar) ba.onclick = ()=>{ alAplicar(); cerrar(); };
+}
+
+function descargarCSV(){
+  const enc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const cab = ['Nombre','Unidad','Fecha del bautismo','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas'];
+  const filas = estado.personas.slice().sort((a,b)=>(b.bautismo||'').localeCompare(a.bautismo||''))
+    .map(p=>[p.nombre,p.unidad,p.bautismo,p.recomendacion,p.ministrantes?'Sí':'No',
+    p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,p.notas].map(enc).join(','));
+  const csv = '\uFEFF' + [cab.map(enc).join(',')].concat(filas).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'conversos-estaca-central.csv'; a.click();
+}
+
+/* ---------- Render ---------- */
+function pintar(){
+  pintarTabs();
+  const panel = document.getElementById('panel');
+  panel.innerHTML = tab==='panel' ? panelHTML() : unidadHTML(tab);
+  document.getElementById('fTotal').textContent = `${conversos().length} conversos en seguimiento`;
+
+  panel.querySelectorAll('[data-tog]').forEach(b=>{
+    b.onclick = ()=>{ const [id,k] = b.dataset.tog.split('|'); alternar(id,k); };
+  });
+  panel.querySelectorAll('[data-abrir]').forEach(b=> b.onclick = ()=> abrirFicha(b.dataset.abrir));
+  panel.querySelectorAll('[data-nuevo]').forEach(b=> b.onclick = ()=> nuevaFicha(b.dataset.nuevo));
+  panel.querySelectorAll('[data-csv]').forEach(b=> b.onclick = descargarCSV);
+  const inp = document.getElementById('archivo');
+  panel.querySelectorAll('[data-importar]').forEach(b=> b.onclick = ()=> inp.click());
+  if(inp) inp.onchange = ()=>{ if(inp.files[0]) importar(inp.files[0]); inp.value=''; };
+  const q = document.getElementById('q');
+  if(q) q.oninput = ()=>{ busca = q.value; const pos = q.selectionStart; pintar(); const q2=document.getElementById('q'); if(q2){q2.focus(); q2.setSelectionRange(pos,pos);} };
+  const pd = document.getElementById('pend');
+  if(pd) pd.onchange = ()=>{ soloPend = pd.checked; pintar(); };
+}
+
+document.getElementById('velo').onclick = e => { if(e.target.id==='velo') e.currentTarget.classList.remove('abierto'); };
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('velo').classList.remove('abierto'); });
+
+(async ()=>{ await cargar(); pintar(); })();
+</script>
+</body>
+</html>
