@@ -169,7 +169,7 @@ const PASOS = [
   {k:'nombreHF',      et:'Nombre en HF',  full:'Primer nombre registrado en Historia Familiar'},
   {k:'llamamiento',   et:'Llamamiento',   full:'Llamamiento o asignación'}
 ];
-const RECS = ['','Activa','Vence este mes','Vence el próximo mes','Cancelada'];
+const RECS = ['','Activa','Vence este mes','Vence el próximo mes','Vencida hace menos de 1 mes','Cancelada'];
 const SAC  = ['','No ha sido ordenado','Aarónico','Melquisedec'];
 const UNIDADES = ['Barrio Bella Vista','Barrio Cristo Rey','Barrio La Fe','Barrio La Paz','Barrio Piantini','Barrio Quisqueya','Rama Los Arroyos'];
 
@@ -181,7 +181,7 @@ let guardando = null;
 
 /* ---------- Utilidades ---------- */
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const tieneRec = p => p.recomendacion && p.recomendacion !== 'Cancelada';
+const tieneRec = p => !!p.recomendacion && p.recomendacion !== 'Cancelada' && !/^Vencida/.test(p.recomendacion);
 const recVence = p => p.recomendacion === 'Vence este mes' || p.recomendacion === 'Vence el próximo mes';
 const tieneLlam = p => !!(p.llamamiento && p.llamamiento.trim());
 const aplicaSac = p => !!p.sacerdocio;
@@ -200,8 +200,7 @@ const pct = (a,b) => b ? Math.round(a/b*100) : 0;
 
 /* ---------- Guardado (servidor) ---------- */
 const API = '/api/datos';
-let codigo = '';
-try{ codigo = localStorage.getItem('cec_codigo') || ''; }catch(e){}
+let codigo = '';   // nunca se guarda: se pide en cada visita
 let sucios = new Set(), pendiente = null, ultimoSync = 0;
 
 function marcar(txt, ok=true){
@@ -259,7 +258,6 @@ function pedirCodigo(){
   setTimeout(()=>inp.focus(), 60);
   const entrar = async ()=>{
     codigo = inp.value.trim();
-    try{ localStorage.setItem('cec_codigo', codigo); }catch(e){}
     document.getElementById('velo').classList.remove('abierto');
     await cargar(); pintar();
   };
@@ -431,6 +429,7 @@ function filaHTML(p){
     const aviso = s.k==='recomendacion' && recVence(p);
     let et = s.et;
     if(s.k==='recomendacion' && p.recomendacion==='Cancelada') et='Recom. cancelada';
+    if(s.k==='recomendacion' && /^Vencida/.test(p.recomendacion||'')) et='Recom. vencida';
     if(aviso) et = p.recomendacion;
     return `<button class="chip${aviso?' aviso':''}" aria-pressed="${on}" data-tog="${p.id}|${s.k}" title="${esc(s.full)}">
       <span class="caja">${check}</span>${esc(et)}</button>`;
@@ -568,11 +567,25 @@ function parseCSV(txt){
 function aISO(v){
   if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
   const s = String(v||'').trim();
-  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
-  const M={ene:1,feb:2,mar:3,abr:4,may:5,mayo:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
-  const m = s.toLowerCase().match(/^(\d{1,2})\s+([a-zé]+)\.?\s+(\d{4})$/);
-  if(m && M[m[2].slice(0,4)]!==undefined) return `${m[3]}-${String(M[m[2].slice(0,4)]??M[m[2].slice(0,3)]).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  if(!s) return '';
+  if(/^\d{4}-\d{1,2}-\d{1,2}/.test(s)){
+    const [a,m,d] = s.slice(0,10).split('-');
+    return `${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  const M = {ene:1,jan:1,feb:2,mar:3,abr:4,apr:4,may:5,jun:6,jul:7,ago:8,aug:8,sep:9,set:9,oct:10,nov:11,dic:12,dec:12};
+  // 23 nov 2025 / 23 Nov 2025 / 12 mayo 2026
+  let m = s.toLowerCase().replace(/\./g,'').match(/^(\d{1,2})\s+([a-záéíóúñ]+)\s+(\d{4})$/);
   if(m && M[m[2].slice(0,3)]) return `${m[3]}-${String(M[m[2].slice(0,3)]).padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // 23/11/2025 · 11-23-2025 · 23.11.2025 — se asume día primero salvo que sea imposible
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if(m){
+    let d = +m[1], mes = +m[2];
+    if(d <= 12 && mes > 12){ const t = d; d = mes; mes = t; }
+    if(d >= 1 && d <= 31 && mes >= 1 && mes <= 12)
+      return `${m[3]}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+  const p = Date.parse(s);
+  if(!isNaN(p)){ const f = new Date(p); return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`; }
   return '';
 }
 function filasARegistros(filas){
@@ -714,7 +727,10 @@ function pintar(){
 document.getElementById('velo').onclick = e => { if(e.target.id==='velo') e.currentTarget.classList.remove('abierto'); };
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') document.getElementById('velo').classList.remove('abierto'); });
 
-(async ()=>{ await cargar(); pintar(); })();
+(async ()=>{
+  marcar('Esperando el código de acceso');
+  pedirCodigo();        // siempre se pide al entrar
+})();
 </script>
 </body>
 </html>

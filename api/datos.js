@@ -7,13 +7,32 @@ const CODIGO = process.env.CODIGO_ACCESO || '';
 const LLAVE = 'conversos';
 
 async function redis(comando) {
-  const r = await fetch(URL_REDIS, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${TOKEN_REDIS}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(comando)
-  });
-  const j = await r.json();
-  if (j.error) throw new Error(j.error);
+  let r;
+  try {
+    r = await fetch(URL_REDIS, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN_REDIS}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(comando),
+      signal: AbortSignal.timeout(8000)
+    });
+  } catch (e) {
+    // Sin esto, el error llega como un escueto "fetch failed" y no se sabe por qué.
+    const causa = e.cause?.code || e.cause?.message || e.name || '';
+    const host = (() => { try { return new URL(URL_REDIS).host; } catch (_) { return URL_REDIS; } })();
+    if (causa === 'ENOTFOUND' || causa === 'EAI_AGAIN') {
+      throw new Error(`La base de datos ya no existe: el nombre ${host} no resuelve. Upstash archiva las bases gratuitas que pasan meses sin uso. Crea una nueva en Vercel → Storage y vuelve a desplegar.`);
+    }
+    if (causa === 'ECONNREFUSED' || causa === 'UND_ERR_CONNECT_TIMEOUT' || e.name === 'TimeoutError') {
+      throw new Error(`No se pudo conectar con ${host} (${causa || 'tiempo agotado'}). La base puede estar pausada o archivada.`);
+    }
+    throw new Error(`Fallo de red hacia ${host}: ${causa || e.message}`);
+  }
+  const texto = await r.text();
+  let j;
+  try { j = JSON.parse(texto); }
+  catch (_) { throw new Error(`Respuesta inesperada de la base (HTTP ${r.status}): ${texto.slice(0, 120)}`); }
+  if (j.error) throw new Error(`La base rechazó el comando: ${j.error}`);
+  if (!r.ok) throw new Error(`La base respondió HTTP ${r.status}`);
   return j.result;
 }
 
