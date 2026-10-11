@@ -424,7 +424,8 @@ function unidadHTML(u){
   const total = L.length;
   if(busca) L = L.filter(p=>p.nombre.toLowerCase().includes(busca.toLowerCase()));
   if(soloPend) L = L.filter(p=>puntaje(p)<PASOS.length);
-  L.sort((a,b)=> (b.bautismo||'').localeCompare(a.bautismo||'') || a.nombre.localeCompare(b.nombre,'es'));
+  const cuando = p => p.bautismo || p.confirmacion || '';
+  L.sort((a,b)=> cuando(b).localeCompare(cuando(a)) || a.nombre.localeCompare(b.nombre,'es'));
 
   let h = `<div class="tools">
     <input class="buscar" type="text" id="q" placeholder="Buscar por nombre" value="${esc(busca)}" aria-label="Buscar por nombre">
@@ -460,7 +461,7 @@ function filaHTML(p){
   return `<div class="persona${listo?' completo':''}">
     <div class="quien">
       <div class="nom">${esc(p.nombre)}${esNuevo(p)?' <span class="etiqueta nuevo">Añadido recientemente</span>':''}</div>
-      <div class="meta">Bautismo ${fechaCorta(p.bautismo)} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
+      <div class="meta">${p.bautismo ? 'Bautismo '+fechaCorta(p.bautismo) : p.confirmacion ? 'Confirmación '+fechaCorta(p.confirmacion) : 'Sin fecha'} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
     </div>
     <div class="cintas">${chips}${sac}</div>
     <button class="abrir" data-abrir="${p.id}" title="Abrir ficha" aria-label="Abrir ficha de ${esc(p.nombre)}">›</button>
@@ -481,11 +482,15 @@ function abrirFicha(id, foco){
   const sel = (arr,val) => arr.map(o=>`<option value="${esc(o)}" ${o===val?'selected':''}>${esc(o||'— Sin registro —')}</option>`).join('');
   document.getElementById('modal').innerHTML = `
     <h3 id="mTitulo">${esc(p.nombre)}</h3>
-    <p class="nota">${esc(p.unidad)} · Bautismo ${fechaCorta(p.bautismo)}</p>
+    <p class="nota">${esc(p.unidad)} · ${p.bautismo ? 'Bautismo '+fechaCorta(p.bautismo) : p.confirmacion ? 'Confirmación '+fechaCorta(p.confirmacion) : 'Sin fecha'}</p>
     <div class="campo"><label>Nombre de preferencia</label><input type="text" id="f_nombre" value="${esc(p.nombre)}"></div>
     <div class="fila2">
       <div class="campo"><label>Unidad</label><select id="f_unidad">${sel(unidadesActivas(), p.unidad)}</select></div>
       <div class="campo"><label>Fecha del bautismo</label><input type="date" id="f_bautismo" value="${esc(p.bautismo)}"></div>
+    </div>
+    <div class="fila2">
+      <div class="campo"><label>Fecha de la confirmación</label><input type="date" id="f_confirmacion" value="${esc(p.confirmacion||'')}"></div>
+      <div></div>
     </div>
     <div class="campo"><label>Recomendación para el templo</label><select id="f_rec">${sel(RECS,p.recomendacion)}</select></div>
     <div class="campo"><label>Llamamiento o asignación</label><input type="text" id="f_llam" value="${esc(p.llamamiento)}" placeholder="Ej. Secretaria de Primaria"></div>
@@ -508,6 +513,7 @@ function abrirFicha(id, foco){
     p.nombre = document.getElementById('f_nombre').value.trim() || p.nombre;
     p.unidad = document.getElementById('f_unidad').value;
     p.bautismo = document.getElementById('f_bautismo').value;
+    p.confirmacion = document.getElementById('f_confirmacion').value;
     p.recomendacion = document.getElementById('f_rec').value;
     p.llamamiento = document.getElementById('f_llam').value.trim();
     p.sacerdocio = document.getElementById('f_sac').value;
@@ -616,6 +622,7 @@ function filasARegistros(filas){
   const C = {
     nombre: col('Nombre de preferencia'), unidad: col('Unidad'), conv: col('Es converso'),
     rec: col('Estado de la recomendación para el templo'), bau: col('Fecha del bautismo'),
+    conf: col('Fecha de la confirmación'),
     hnas: col('Hermanas ministrantes'), hnos: col('Hermanos ministrantes'),
     llam: col('Llamamientos'), sac: col('Sacerdocio'),
     thnas: col('Tiene hermanas ministrantes'), thnos: col('Tiene hermanos ministrantes')
@@ -630,7 +637,7 @@ function filasARegistros(filas){
     if(String(g(C.conv)).trim()==='No') continue;   // el informe marca a quien no es converso reciente
     const nota = [String(g(C.hnas)).trim(), String(g(C.hnos)).trim()].filter(Boolean).join(' / ');
     out.push({
-      nombre:nom, unidad:uni, bautismo:aISO(g(C.bau)),
+      nombre:nom, unidad:uni, bautismo:aISO(g(C.bau)), confirmacion:aISO(g(C.conf)),
       recomendacion:String(g(C.rec)).trim(), llamamiento:String(g(C.llam)).trim(), sacerdocio:String(g(C.sac)).trim(),
       ministrantes: String(g(C.thnas)).trim()==='Sí' || String(g(C.thnos)).trim()==='Sí' || !!nota,
       ministrantesNota: nota
@@ -666,6 +673,7 @@ async function importar(file){
     if(r.ministrantes && !p.ministrantes) dif.push(['ministrantes','Ministrantes','no','sí']);
     if(r.unidad !== p.unidad) dif.push(['unidad','Unidad', p.unidad, r.unidad]);
     if(r.bautismo && r.bautismo !== p.bautismo) dif.push(['bautismo','Bautismo', p.bautismo||'sin fecha', r.bautismo]);
+    if(r.confirmacion && r.confirmacion !== p.confirmacion) dif.push(['confirmacion','Confirmación', p.confirmacion||'sin fecha', r.confirmacion]);
     if(dif.length) cambios.push({p, r, dif});
   });
   const enInforme = new Set(regs.map(r=>norm(r.nombre)));
@@ -686,7 +694,9 @@ async function importar(file){
     const tocados = [];
     nuevos.forEach(r=>{
       const id = 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-      estado.personas.push(Object.assign({id, agregado:new Date().toISOString(), nombreHF:false, nombreHFNota:'', notas:''}, r));
+      const nuevo = Object.assign({id, agregado:new Date().toISOString(), nombreHF:false, nombreHFNota:'', notas:''}, r);
+      if(!nuevo.bautismo && nuevo.confirmacion) nuevo.bautismo = '';   // se muestra la confirmación, no se inventa un bautismo
+      estado.personas.push(nuevo);
       tocados.push(id);
     });
     cambios.forEach(c=>{
@@ -711,9 +721,9 @@ function avisoImport(html, alAplicar){
 
 function descargarCSV(){
   const enc = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const cab = ['Nombre','Unidad','Fecha del bautismo','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas','Añadido el'];
+  const cab = ['Nombre','Unidad','Fecha del bautismo','Fecha de la confirmación','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas','Añadido el'];
   const filas = estado.personas.slice().sort((a,b)=>(b.bautismo||'').localeCompare(a.bautismo||''))
-    .map(p=>[p.nombre,p.unidad,p.bautismo,p.recomendacion,p.ministrantes?'Sí':'No',
+    .map(p=>[p.nombre,p.unidad,p.bautismo,p.confirmacion||'',p.recomendacion,p.ministrantes?'Sí':'No',
     p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,p.notas,(p.agregado||'').slice(0,10)].map(enc).join(','));
   const csv = '\uFEFF' + [cab.map(enc).join(',')].concat(filas).join('\r\n');
   const a = document.createElement('a');
