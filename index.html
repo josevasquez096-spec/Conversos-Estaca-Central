@@ -734,12 +734,16 @@ async function importar(file){
   if(nuevos.length) h += `<div class="campo"><label>Se añadirán (quedan marcados «Añadido recientemente» ${DIAS_NUEVO} días)</label><div style="font-size:13px;line-height:1.7">${nuevos.map(n=>`${esc(primerNombre(n.nombre))} <span class="etiqueta">${esc(n.unidad.replace('Barrio ','').replace('Rama ',''))}</span>`).join('<br>')}</div></div>`;
   if(cambios.length) h += `<div class="campo"><label>Se actualizarán</label><div style="font-size:13px;line-height:1.6">${cambios.map(c=>
       `<div style="margin-bottom:7px"><strong>${esc(corto(c.p))}</strong><br>${c.dif.map(d=>`<span style="color:var(--tinta-suave)">${esc(d[1])}: ${esc(d[2])} → ${esc(d[3])}</span>`).join('<br>')}</div>`).join('')}</div>`;
-  if(ausentes.length) h += `<div class="campo"><label>No aparecen en el informe</label><div style="font-size:13px;color:var(--tinta-suave)">${ausentes.map(p=>esc(corto(p))).join(', ')}</div></div>`;
+  if(ausentes.length) h += `<div class="campo"><label>No aparecen en el informe</label>
+    <div style="font-size:13px;color:var(--tinta-suave);margin-bottom:9px">${ausentes.map(p=>esc(corto(p))).join(', ')}</div>
+    <label class="toggle-filtro"><input type="checkbox" id="i_retirar"> Retirarlos de la lista (${ausentes.length}); salieron del periodo que cubre el informe</label></div>`;
   if(!nuevos.length && !cambios.length) h += `<p class="nota">Tu lista ya coincide con el informe. No hay nada que cambiar.</p>`;
   h += `<div class="acciones">
-      ${(nuevos.length||cambios.length) ? `<button class="btn primario" id="i_aplicar">Aplicar cambios</button>` : ''}
-      <button class="btn" id="i_cerrar">${(nuevos.length||cambios.length)?'Cancelar':'Cerrar'}</button></div>`;
+      ${(nuevos.length||cambios.length||ausentes.length) ? `<button class="btn primario" id="i_aplicar">Aplicar cambios</button>` : ''}
+      <button class="btn" id="i_cerrar">${(nuevos.length||cambios.length||ausentes.length)?'Cancelar':'Cerrar'}</button></div>`;
   avisoImport(h, ()=>{
+    const cas = document.getElementById('i_retirar');
+    const retirar = !!(cas && cas.checked);
     const tocados = [];
     nuevos.forEach(r=>{
       const id = 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -753,7 +757,16 @@ async function importar(file){
       });
       tocados.push(c.p.id);
     });
-    guardar(tocados); pintar();
+    guardar(tocados);
+    if(retirar && ausentes.length){
+      const ids = ausentes.map(p=>p.id);
+      estado.personas = estado.personas.filter(p=>!ids.includes(p.id));
+      ids.forEach(i=>sucios.delete(i));
+      pedir('POST', {borrar: ids})
+        .then(()=>marcar(`${ids.length} retirados · ` + hora()))
+        .catch(e=>marcar('No se pudieron retirar: ' + e.message, false));
+    }
+    pintar();
   });
 }
 function avisoImport(html, alAplicar){
