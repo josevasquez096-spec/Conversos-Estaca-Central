@@ -146,7 +146,7 @@ footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta
   <header class="top">
     <div class="eyebrow">Estaca Central · Santo Domingo</div>
     <h1>Conversos recientes</h1>
-    <p class="sub">Seguimiento del cuidado de cada converso bautizado desde agosto de 2025. Toca cada distintivo para marcar lo que ya se cumplió; se guarda para todos los que abran este enlace.</p>
+    <p class="sub">Seguimiento del cuidado de cada converso del último año. Toca cada distintivo para marcar lo que ya se cumplió; se guarda para todos los que abran este enlace.</p>
     <div class="estado"><span class="punto" id="pDot"></span><span id="pEstado">Cargando…</span></div>
   </header>
 
@@ -154,7 +154,7 @@ footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta
   <div class="panel" id="panel" role="tabpanel"></div>
 
   <footer>
-    Fuente: Informe de conversos recientes · 1 ago 2025 – 21 ago 2026 · <span id="fTotal"></span><br>
+    Fuente: informe «Conversos recientes» de LCR, último año · <span id="fPeriodo"></span> · <span id="fTotal"></span><br>
     Los cambios que hagas aquí se guardan y se comparten con todas las personas que abran este enlace.
   </footer>
 </div>
@@ -785,6 +785,9 @@ function pintar(){
   const panel = document.getElementById('panel');
   panel.innerHTML = tab==='panel' ? panelHTML() : unidadHTML(tab);
   document.getElementById('fTotal').textContent = `${conversos().length} conversos en seguimiento`;
+  const fechas = conversos().map(p=>p.confirmacion).filter(Boolean).sort();
+  document.getElementById('fPeriodo').textContent = fechas.length
+    ? `${fechaCorta(fechas[0])} – ${fechaCorta(fechas[fechas.length-1])}` : 'sin registros';
 
   panel.querySelectorAll('[data-tog]').forEach(b=>{
     b.onclick = ()=>{ const [id,k] = b.dataset.tog.split('|'); alternar(id,k); };
