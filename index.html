@@ -98,6 +98,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-o
 .etiqueta{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:99px;border:1px solid var(--linea-fuerte);color:var(--tinta-suave)}
 .etiqueta.aviso{border-color:var(--alerta);color:var(--alerta);background:var(--alerta-claro)}
 .etiqueta.nuevo{border-color:#8FBFAF;color:#155345;background:var(--hecho-claro);font-weight:600}
+.error-codigo{border:1px solid #D9A79B;background:#FBEFEC;color:#8F3A22;border-radius:8px;padding:9px 11px;font-size:13px;margin-top:12px;display:flex;gap:7px;align-items:flex-start}
+.error-codigo b{font-weight:600}
+.sacude{animation:sacude .3s}
+@keyframes sacude{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 .aviso-nuevos{border:1px solid #8FBFAF;background:var(--hecho-claro);color:#155345;border-radius:var(--r);padding:10px 12px;font-size:13px;margin-bottom:14px}
 .cintas{display:flex;flex-wrap:wrap;gap:5px}
 .chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--linea-fuerte);background:var(--superficie);color:var(--tinta-suave);
@@ -234,7 +238,7 @@ function guardar(ids){
       ultimoSync = Date.now();
       marcar('Guardado · ' + hora());
     }catch(e){
-      if(e.codigo){ pedirCodigo(); return; }
+      if(e.codigo){ pedirCodigo('El código cambió o dejó de ser válido. Escríbelo otra vez para seguir guardando.'); return; }
       marcar('No se guardó: ' + e.message + '. Se reintenta al hacer otro cambio.', false);
     }
   }, 500);
@@ -244,20 +248,27 @@ async function borrarRemoto(id){
   estado.personas = estado.personas.filter(p=>p.id!==id);
   sucios.delete(id);
   try{ await pedir('POST', {borrar:[id]}); marcar('Guardado · ' + hora()); }
-  catch(e){ if(e.codigo) pedirCodigo(); else marcar('No se pudo eliminar: ' + e.message, false); }
+  catch(e){ if(e.codigo) pedirCodigo('El código cambió o dejó de ser válido. Escríbelo otra vez.'); else marcar('No se pudo eliminar: ' + e.message, false); }
 }
 
-function pedirCodigo(){
-  document.getElementById('modal').innerHTML = `
+let intentos = 0;
+function pedirCodigo(error){
+  const modal = document.getElementById('modal');
+  modal.innerHTML = `
     <h3 id="mTitulo">Código de acceso</h3>
     <p class="nota">Esta lista tiene datos de miembros. Pide el código a quien administra la página.</p>
     <div class="campo"><label>Código</label><input type="password" id="c_codigo" autocomplete="off"></div>
+    ${error ? `<div class="error-codigo" id="c_error">${esc(error)}</div>` : ''}
     <div class="acciones"><button class="btn primario" id="c_entrar">Entrar</button></div>`;
   document.getElementById('velo').classList.add('abierto');
+  if(error){ modal.classList.add('sacude'); setTimeout(()=>modal.classList.remove('sacude'), 320); }
   const inp = document.getElementById('c_codigo');
   setTimeout(()=>inp.focus(), 60);
   const entrar = async ()=>{
-    codigo = inp.value.trim();
+    const v = inp.value.trim();
+    if(!v){ return pedirCodigo('Escribe el código para entrar.'); }
+    codigo = v;
+    marcar('Comprobando el código…');
     document.getElementById('velo').classList.remove('abierto');
     await cargar(); pintar();
   };
@@ -310,7 +321,16 @@ async function cargar(){
     }
     ultimoSync = Date.now();
   }catch(e){
-    if(e.codigo){ estado.personas = []; pedirCodigo(); return; }
+    if(e.codigo){
+      estado.personas = [];
+      intentos++;
+      marcar('Código incorrecto', false);
+      pedirCodigo(intentos > 2
+        ? 'El código sigue sin coincidir. Revisa que no lleve espacios al inicio ni al final, y confírmalo con quien administra la página.'
+        : 'Código incorrecto. Inténtalo de nuevo.');
+      return;
+    }
+    intentos = 0;
     estado.personas = SEED.slice();
     marcar('Sin conexión con el servidor (' + e.message + '). Usa «Probar conexión» en el panel.', false);
   }
