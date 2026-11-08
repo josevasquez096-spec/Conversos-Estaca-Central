@@ -43,6 +43,9 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,6.4vw,42px);l
 .punto.off{background:var(--alerta)}
 
 /* ---------- Pestañas ---------- */
+select.tabsel{display:none;width:100%;font-family:var(--display);font-weight:600;font-size:15px;
+  padding:11px 12px;border:1px solid var(--linea-fuerte);border-radius:var(--r);background:var(--superficie);
+  margin-top:12px;color:var(--tinta)}
 nav.tabs{display:flex;gap:4px;overflow-x:auto;padding:12px 0 0;margin:0 -14px;padding-left:14px;padding-right:14px;scrollbar-width:none}
 nav.tabs::-webkit-scrollbar{display:none}
 .tab{flex:0 0 auto;background:transparent;border:1px solid transparent;border-bottom:none;border-radius:var(--r) var(--r) 0 0;
@@ -108,7 +111,8 @@ h2.sec:first-child{margin-top:0}
 p.nota{color:var(--tinta-suave);font-size:12.5px;margin:0 0 12px}
 
 /* ---------- Tabla por unidad ---------- */
-table.unidades{width:100%;border-collapse:collapse;font-size:13px}
+.tabla-env{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px}
+table.unidades{width:100%;min-width:560px;border-collapse:collapse;font-size:13px}
 table.unidades th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);font-weight:500;padding:6px 6px;border-bottom:1px solid var(--linea)}
 table.unidades td{padding:7px 6px;border-bottom:1px solid var(--linea);font-variant-numeric:tabular-nums}
 table.unidades td.num{font-family:var(--mono);text-align:right}
@@ -178,6 +182,19 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-o
 .recordatorio{background:#F5F8F4;border:1px solid var(--linea);border-radius:8px;padding:9px 11px;font-size:12px;color:var(--tinta-suave);margin-top:13px}
 
 footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta-suave);line-height:1.7}
+@media (max-width:700px){
+  nav.tabs{display:none}
+  .solo-ancho{display:none}
+  select.tabsel{display:block;position:sticky;top:8px;z-index:6;box-shadow:0 2px 12px rgba(24,39,35,.14)}
+  .panel{border-radius:var(--r);margin-top:9px}
+  .persona{padding:10px 11px;gap:8px}
+  .persona .quien{flex:1 1 100%}
+  .chip{font-size:11.5px;padding:5px 9px 5px 6px}
+  .resumen .total .n{font-size:38px}
+  .stat .pct{font-size:30px}
+  header.top{padding:20px 0 10px}
+  .sub{font-size:13.5px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .hoja{display:none}
 #todo{display:none}
@@ -213,10 +230,11 @@ body.imprimir-todo #todo{display:block}
   <header class="top">
     <div class="eyebrow">Estaca Central · Santo Domingo</div>
     <h1>Conversos recientes</h1>
-    <p class="sub">Seguimiento del cuidado de cada converso del último año. Toca cada distintivo para marcar lo que ya se cumplió; se guarda para todos los que abran este enlace.</p>
+    <p class="sub"><span class="solo-ancho">Seguimiento del cuidado de cada converso del último año. </span>Toca cada distintivo para marcar lo que ya se cumplió; se guarda para todos los que abran este enlace.</p>
     <div class="estado"><span class="punto" id="pDot"></span><span id="pEstado">Cargando…</span></div>
   </header>
 
+  <select class="tabsel" id="tabsel" aria-label="Elegir unidad"></select>
   <nav class="tabs" id="tabs" role="tablist"></nav>
   <div class="hoja" id="hoja"></div>
   <div class="panel" id="panel" role="tabpanel"></div>
@@ -498,7 +516,18 @@ function pintarTabs(){
     .concat(unidadesActivas().map(u=>({id:u, nom:u.replace('Barrio ','').replace('Rama ',''), n:estado.personas.filter(p=>p.unidad===u && pasa(p)).length})));
   t.innerHTML = items.map(i=>
     `<button class="tab" role="tab" aria-selected="${i.id===tab}" data-tab="${esc(i.id)}">${esc(i.nom)}<span class="n">${i.n}</span></button>`).join('');
-  t.querySelectorAll('.tab').forEach(b=> b.onclick = ()=>{ tab=b.dataset.tab; busca=''; pintar(); window.scrollTo({top:0,behavior:'smooth'}); });
+  t.querySelectorAll('.tab').forEach(b=> b.onclick = ()=> irA(b.dataset.tab));
+  const sel = document.getElementById('tabsel');
+  sel.innerHTML = items.map(i=>
+    `<option value="${esc(i.id)}" ${i.id===tab?'selected':''}>${esc(i.nom)} · ${i.n}</option>`).join('');
+  sel.onchange = ()=> irA(sel.value);
+  const act = t.querySelector('[aria-selected="true"]');
+  if(act && act.scrollIntoView) act.scrollIntoView({block:'nearest', inline:'nearest'});
+}
+function irA(destino){
+  tab = destino; busca = '';
+  pintar();
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 function unidadesActivas(){
   const s = new Set(UNIDADES);
@@ -588,7 +617,7 @@ function panelHTML(){
 
   // Tabla por unidad
   h += `<h2 class="sec">Por unidad</h2>
-  <table class="unidades"><thead><tr><th>Unidad</th><th style="text-align:right">Conversos</th>
+  <div class="tabla-env"><table class="unidades"><thead><tr><th>Unidad</th><th style="text-align:right">Conversos</th>
   <th style="text-align:right">Recom.</th><th style="text-align:right">Minist.</th><th style="text-align:right">Nombre HF</th>
   <th style="text-align:right">Llamam.</th><th style="text-align:right">Niños</th>
   <th style="text-align:right">Jóvenes</th><th style="text-align:right">Adultos</th></tr></thead><tbody>` +
@@ -598,7 +627,7 @@ function panelHTML(){
     const ce = g.filter(p=>edadDe(p)!=='').length;
     const e = k => `<td class="num">${ce ? pct(g.filter(p=>tramoDe(p)===k).length, ce)+'%' : '—'}</td>`;
     return `<tr><td>${esc(u)}</td><td class="num">${n}</td>${c(tieneRec)}${c(p=>p.ministrantes)}${c(p=>p.nombreHF)}${c(tieneLlam)}${e('ninos')}${e('jovenes')}${e('adultos')}</tr>`;
-  }).join('') + `</tbody></table>
+  }).join('') + `</tbody></table></div>
   <h2 class="sec">Mantener la lista al día</h2>
   <p class="nota">Exporta el informe «Conversos recientes» desde LCR (Excel o CSV) y súbelo aquí. Se añaden los conversos nuevos y se actualizan confirmación, recomendación, llamamiento, sacerdocio, ministrantes, edad y género. Lo que marques de nombre en HF no se toca.</p>
   <div class="tools">
