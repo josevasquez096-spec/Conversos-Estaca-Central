@@ -179,7 +179,33 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-o
 
 footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta-suave);line-height:1.7}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-@media print{nav.tabs,.tools,.abrir,footer{display:none}.panel{border:none;box-shadow:none}body::before,body::after{display:none}}
+.hoja{display:none}
+#todo{display:none}
+body.imprimir-todo #panel, body.imprimir-todo nav.tabs{display:none}
+body.imprimir-todo #todo{display:block}
+.hoja h1{font-family:var(--display);font-size:19px;margin:0 0 2px;letter-spacing:-.01em}
+.hoja p{margin:0;font-family:var(--mono);font-size:10.5px;color:var(--tinta-suave)}
+.corte{break-before:page;page-break-before:always}
+@media print{
+  @page{margin:14mm 12mm}
+  html,body{background:#fff}
+  body::before,body::after{display:none}
+  header.top,nav.tabs,.tools,.filtros,.abrir,.estado,footer,.velo{display:none !important}
+  .wrap{max-width:none;padding:0}
+  .hoja{display:block;margin-bottom:14px;padding-bottom:9px;border-bottom:1.5px solid var(--tinta)}
+  .panel{border:none;box-shadow:none;padding:0;border-radius:0}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .persona,.stat,.resumen,.seg,tr,.aviso-nuevos{break-inside:avoid;page-break-inside:avoid}
+  h2.sec{break-after:avoid;page-break-after:avoid}
+  .persona{border-color:#BBB;padding:6px 9px;margin-bottom:5px;gap:6px}
+  .persona .nom{font-size:13px}
+  .chip{padding:3px 8px 3px 5px;font-size:11px}
+  .resumen{padding:11px 12px;margin-bottom:10px}
+  .resumen .total .n{font-size:34px}
+  h2.sec{font-size:15px;margin:14px 0 3px}
+  body{font-size:12.5px}
+  .mosaico .tile{width:13px;height:13px}
+}
 </style>
 </head>
 <body>
@@ -192,7 +218,9 @@ footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta
   </header>
 
   <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div class="hoja" id="hoja"></div>
   <div class="panel" id="panel" role="tabpanel"></div>
+  <div id="todo"></div>
 
   <footer>
     Fuente: informe «Conversos recientes» de LCR, último año · <span id="fPeriodo"></span> · <span id="fTotal"></span><br>
@@ -505,15 +533,19 @@ function bloqueSeg(titulo, segs, sinDato, queFalta){
   </div>`;
 }
 
-function resumenHTML(L){
+function resumenHTML(L, unidad){
   const conEdad = L.filter(p=>edadDe(p)!=='');
   const segE = TRAMOS.map(t=>({et:t.et, full:t.full, color:t.color, n:conEdad.filter(p=>tramoDe(p)===t.k).length}));
   const segG = GENEROS.map(g=>({et:g.et, color:g.color, n:L.filter(p=>generoDe(p)===g.k).length}));
+  const pasos = PASOS.map(s=>({et:s.et, full:s.full, n:L.filter(p=>hecho(p,s.k)).length}));
   return `<div class="resumen">
-    <div class="total"><span class="n">${L.length}</span><span class="et">conversos${hayFiltro()?' con este filtro':' en seguimiento'}</span></div>
+    <div class="total"><span class="n">${L.length}</span><span class="et">conversos${hayFiltro()?' con este filtro':unidad?' en la unidad':' en seguimiento'}</span></div>
     <div class="segs">
       ${bloqueSeg('Por edad', segE, L.length-conEdad.length, 'edad')}
       ${bloqueSeg('Por género', segG, L.filter(p=>!generoDe(p)).length, 'género')}
+      ${unidad ? `<div class="seg" style="grid-column:1/-1"><h3>Lo que ya se cumplió</h3>
+        <div class="seg-leyenda">${pasos.map(s=>
+          `<span title="${esc(s.full)}"><b>${pct(s.n,L.length)}%</b> ${esc(s.et)} <em>${s.n} de ${L.length}</em></span>`).join('')}</div></div>` : ''}
     </div>
   </div>`;
 }
@@ -572,6 +604,8 @@ function panelHTML(){
   <div class="tools">
     <button class="btn primario" data-importar="1">Actualizar desde el informe de LCR</button>
     <button class="btn" data-csv="1">Descargar respaldo (CSV)</button>
+    <button class="btn" data-imprimir="panel">Imprimir el panel</button>
+    <button class="btn" data-imprimir="todo">Imprimir todo</button>
     <button class="btn sutil" data-diag="1">Probar conexión</button>
     <input type="file" id="archivo" accept=".xlsx,.xls,.csv" style="display:none">
   </div>`;
@@ -579,7 +613,7 @@ function panelHTML(){
 }
 
 /* ---------- Unidad ---------- */
-function unidadHTML(u){
+function unidadHTML(u, imprimir){
   let L = estado.personas.filter(p=>p.unidad===u);
   const total = L.length;
   L = L.filter(pasa);
@@ -587,11 +621,12 @@ function unidadHTML(u){
   if(soloPend) L = L.filter(p=>puntaje(p)<PASOS.length);
   L.sort((a,b)=> (b.confirmacion||'').localeCompare(a.confirmacion||'') || a.nombre.localeCompare(b.nombre,'es'));
 
-  let h = filtrosHTML() + `<div class="tools">
+  let h = resumenHTML(L, u) + (imprimir ? '' : filtrosHTML() + `<div class="tools">
     <input class="buscar" type="text" id="q" placeholder="Buscar por nombre" value="${esc(busca)}" aria-label="Buscar por nombre">
     <label class="toggle-filtro"><input type="checkbox" id="pend" ${soloPend?'checked':''}> Solo con algo pendiente</label>
     <button class="btn primario" data-nuevo="${esc(u)}">Añadir converso</button>
-  </div>`;
+    <button class="btn" data-imprimir="${esc(u)}">Imprimir esta unidad</button>
+  </div>`);
 
   if(!L.length){
     h += `<div class="vacio">${total ? 'Nadie de esta unidad coincide con el filtro.' : 'Aún no hay conversos en esta unidad. Usa «Añadir converso» para registrar el primero.'}</div>`;
@@ -626,6 +661,41 @@ function filaHTML(p){
     <div class="cintas">${chips}${sac}</div>
     <button class="abrir" data-abrir="${p.id}" title="Abrir ficha" aria-label="Abrir ficha de ${esc(corto(p))}">›</button>
   </div>`;
+}
+
+/* ---------- Imprimir ---------- */
+function hojaHTML(titulo){
+  const f = new Date().toLocaleDateString('es-DO',{day:'numeric',month:'long',year:'numeric'});
+  const filtro = [filtros.genero && (GENEROS.find(g=>g.k===filtros.genero)||{}).et,
+                  filtros.tramo  && (TRAMOS.find(t=>t.k===filtros.tramo)||{}).et].filter(Boolean).join(' · ');
+  return `<h1>${esc(titulo)}</h1>
+    <p>Estaca Central · Conversos del último año · Impreso el ${esc(f)}${filtro?' · Filtro: '+esc(filtro):''}</p>`;
+}
+
+function imprimir(que){
+  document.getElementById('hoja').innerHTML = hojaHTML(que==='panel'||que==='todo' ? 'Panel de la estaca' : que);
+  if(que !== 'todo'){ window.print(); return; }
+
+  const vBusca = busca, vPend = soloPend;
+  busca = ''; soloPend = false;            // la hoja impresa lleva la unidad completa
+  document.getElementById('todo').innerHTML =
+    `<div class="panel">${panelHTML()}</div>` +
+    unidadesActivas().filter(u=>estado.personas.some(p=>p.unidad===u && pasa(p)))
+      .map(u=>`<div class="panel corte"><h2 class="sec" style="margin-top:0">${esc(u)}</h2>${unidadHTML(u, true)}</div>`).join('');
+  document.body.classList.add('imprimir-todo');
+
+  let hecho = false;
+  const limpiar = ()=>{
+    if(hecho) return; hecho = true;
+    window.removeEventListener('afterprint', limpiar);
+    document.body.classList.remove('imprimir-todo');
+    document.getElementById('todo').innerHTML = '';
+    busca = vBusca; soloPend = vPend;
+    pintar();
+  };
+  window.addEventListener('afterprint', limpiar);
+  setTimeout(limpiar, 60000);              // por si el navegador no avisa que terminó
+  window.print();
 }
 
 /* ---------- Acciones ---------- */
@@ -961,6 +1031,7 @@ function pintar(){
   const panel = document.getElementById('panel');
   panel.innerHTML = tab==='panel' ? panelHTML() : unidadHTML(tab);
   document.getElementById('fTotal').textContent = `${conversos().length} conversos en seguimiento`;
+  document.getElementById('hoja').innerHTML = hojaHTML(tab==='panel' ? 'Panel de la estaca' : tab);
   const fechas = conversos().map(p=>p.confirmacion).filter(Boolean).sort();
   document.getElementById('fPeriodo').textContent = fechas.length
     ? `${fechaCorta(fechas[0])} – ${fechaCorta(fechas[fechas.length-1])}` : 'sin registros';
@@ -976,6 +1047,7 @@ function pintar(){
     pintar();
   });
   panel.querySelectorAll('[data-limpiar]').forEach(b=> b.onclick = ()=>{ filtros={genero:'',tramo:''}; pintar(); });
+  panel.querySelectorAll('[data-imprimir]').forEach(b=> b.onclick = ()=> imprimir(b.dataset.imprimir));
   panel.querySelectorAll('[data-csv]').forEach(b=> b.onclick = descargarCSV);
   panel.querySelectorAll('[data-diag]').forEach(b=> b.onclick = diagnostico);
   const inp = document.getElementById('archivo');
