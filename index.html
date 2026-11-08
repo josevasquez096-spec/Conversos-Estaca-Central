@@ -74,10 +74,12 @@ nav.tabs::-webkit-scrollbar{display:none}
 .seg .vacio-seg{font-size:12px;color:var(--pendiente)}
 
 .filtros{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:14px}
-.fgrupo{display:flex;align-items:center;gap:0;border:1px solid var(--linea-fuerte);border-radius:99px;overflow:hidden;background:var(--superficie)}
-.fgrupo .et{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);padding:0 9px 0 11px}
+.fgrupo{display:flex;align-items:center;gap:7px}
+.fgrupo .et{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave)}
+.fgrupo .ops{display:flex;border:1px solid var(--linea-fuerte);border-radius:99px;overflow:hidden;background:var(--superficie)}
 .fchip{border:none;background:transparent;font-family:var(--cuerpo);font-size:12.5px;color:var(--tinta-suave);
   padding:6px 11px;cursor:pointer;border-left:1px solid var(--linea)}
+.fchip:first-child{border-left:none}
 .fchip:hover{color:var(--tinta);background:#F2F5F1}
 .fchip[aria-pressed="true"]{background:var(--tinta);color:#fff}
 .fchip:focus-visible{outline:2px solid var(--hecho);outline-offset:-2px}
@@ -215,8 +217,8 @@ const PASOS = [
 const RECS = ['','Activa','Vence este mes','Vence el próximo mes','Vencida hace menos de 1 mes','Cancelada'];
 const SAC  = ['','No ha sido ordenado','Aarónico','Melquisedec'];
 const TRAMOS = [
-  {k:'ninos',   et:'Niños',   full:'Menores de 12 años',      color:'#9FCBB9', test:e=>e<12},
-  {k:'jovenes', et:'Jóvenes', full:'De 12 a 17 años',         color:'#5EA48D', test:e=>e>=12 && e<18},
+  {k:'ninos',   et:'Niños',   full:'Hasta los 10 años',       color:'#9FCBB9', test:e=>e<11},
+  {k:'jovenes', et:'Jóvenes', full:'De 11 a 17 años',         color:'#5EA48D', test:e=>e>=11 && e<18},
   {k:'adultos', et:'Adultos', full:'De 18 años en adelante',  color:'#1F6F5C', test:e=>e>=18}
 ];
 const GENEROS = [
@@ -480,9 +482,9 @@ function unidadesActivas(){
 function filtrosHTML(){
   const grupo = (etiqueta, campo, ops) => `<div class="fgrupo" role="group" aria-label="${esc(etiqueta)}">
     <span class="et">${esc(etiqueta)}</span>
-    ${[{k:'',et:'Todos'}].concat(ops).map(o=>
+    <span class="ops">${[{k:'',et:'Todos'}].concat(ops).map(o=>
       `<button class="fchip" aria-pressed="${filtros[campo]===o.k}" data-filtro="${campo}|${o.k}"
-        ${o.full?`title="${esc(o.full)}"`:''}>${esc(o.et)}</button>`).join('')}
+        ${o.full?`title="${esc(o.full)}"`:''}>${esc(o.et)}</button>`).join('')}</span>
   </div>`;
   return `<div class="filtros">
     ${grupo('Género','genero', GENEROS)}
@@ -498,14 +500,14 @@ function bloqueSeg(titulo, segs, sinDato, queFalta){
     <div class="seg-barra">${segs.filter(s=>s.n).map(s=>
       `<i style="width:${s.n/base*100}%;background:${s.color}" title="${esc(s.et)}: ${s.n}"></i>`).join('')}</div>
     <div class="seg-leyenda">${segs.map(s=>
-      `<span><i class="sw" style="background:${s.color}"></i>${esc(s.et)} <b>${pct(s.n,base)}%</b> <em>${s.n}</em></span>`).join('')}
+      `<span${s.full?` title="${esc(s.full)}"`:''}><i class="sw" style="background:${s.color}"></i>${esc(s.et)} <b>${pct(s.n,base)}%</b> <em>${s.n}</em></span>`).join('')}
       ${sinDato ? `<span style="color:var(--pendiente)">Sin ${esc(queFalta)}: <em>${sinDato}</em></span>` : ''}</div>
   </div>`;
 }
 
 function resumenHTML(L){
   const conEdad = L.filter(p=>edadDe(p)!=='');
-  const segE = TRAMOS.map(t=>({et:t.et, color:t.color, n:conEdad.filter(p=>tramoDe(p)===t.k).length}));
+  const segE = TRAMOS.map(t=>({et:t.et, full:t.full, color:t.color, n:conEdad.filter(p=>tramoDe(p)===t.k).length}));
   const segG = GENEROS.map(g=>({et:g.et, color:g.color, n:L.filter(p=>generoDe(p)===g.k).length}));
   return `<div class="resumen">
     <div class="total"><span class="n">${L.length}</span><span class="et">conversos${hayFiltro()?' con este filtro':' en seguimiento'}</span></div>
