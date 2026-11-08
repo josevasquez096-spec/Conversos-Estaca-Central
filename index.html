@@ -135,9 +135,11 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-o
 
 /* ---------- Fila de persona ---------- */
 .persona{border:1px solid var(--linea);border-radius:var(--r);padding:11px 12px;margin-bottom:8px;background:var(--superficie);
-  display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  display:grid;grid-template-columns:minmax(140px,1fr) auto 18px;gap:7px 10px;align-items:center}
 .persona.completo{border-color:#CBE0D6;background:#FAFDFB}
-.persona .quien{flex:1 1 230px;min-width:0}
+.persona .quien{grid-column:1;min-width:0}
+.persona .cintas{grid-column:2}
+.persona .abrir{grid-column:3;justify-self:end}
 .persona .nom{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:-.01em;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .persona .meta{font-family:var(--mono);font-size:11px;color:var(--tinta-suave);margin-top:2px}
 .etiqueta{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:99px;border:1px solid var(--linea-fuerte);color:var(--tinta-suave)}
@@ -161,6 +163,15 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--hecho);outline-o
 .chip.aviso .caja svg{opacity:1;stroke:#fff}
 .chip:focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
 .chip.na{opacity:.5;cursor:default}
+select.motivo{font-family:var(--cuerpo);font-size:12px;color:var(--tinta-suave);background:var(--superficie);
+  border:1px dashed var(--linea-fuerte);border-radius:99px;padding:5px 9px;max-width:200px;cursor:pointer}
+select.motivo.puesto{border-style:solid;border-color:#D9B58A;background:var(--alerta-claro);color:var(--alerta);font-weight:500}
+select.motivo:focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
+.motivos-lista{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.motivos-lista .fila{display:flex;align-items:center;gap:9px;font-size:13px}
+.motivos-lista .bar{flex:1;height:7px;border-radius:99px;background:#E7EBE6;overflow:hidden;min-width:40px}
+.motivos-lista .bar i{display:block;height:100%;background:var(--alerta)}
+.motivos-lista b{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;min-width:2.6em;text-align:right}
 .abrir{border:none;background:transparent;color:var(--tinta-suave);cursor:pointer;font-size:18px;line-height:1;padding:6px 4px;border-radius:6px}
 .abrir:hover{color:var(--tinta);background:#EFF3EE}
 
@@ -187,8 +198,10 @@ footer{padding:22px 0 0;font-family:var(--mono);font-size:11px;color:var(--tinta
   .solo-ancho{display:none}
   select.tabsel{display:block;position:sticky;top:8px;z-index:6;box-shadow:0 2px 12px rgba(24,39,35,.14)}
   .panel{border-radius:var(--r);margin-top:9px}
-  .persona{padding:10px 11px;gap:8px}
-  .persona .quien{flex:1 1 100%}
+  .persona{padding:10px 11px;gap:7px;grid-template-columns:1fr 18px}
+  .persona .quien{grid-column:1;grid-row:1}
+  .persona .abrir{grid-column:2;grid-row:1;align-self:start}
+  .persona .cintas{grid-column:1/-1;grid-row:2}
   .chip{font-size:11.5px;padding:5px 9px 5px 6px}
   .resumen .total .n{font-size:38px}
   .stat .pct{font-size:30px}
@@ -217,6 +230,8 @@ body.imprimir-todo #todo{display:block}
   .persona{border-color:#BBB;padding:6px 9px;margin-bottom:5px;gap:6px}
   .persona .nom{font-size:13px}
   .chip{padding:3px 8px 3px 5px;font-size:11px}
+  select.motivo{border:none;background:none;color:var(--alerta);font-size:11px;padding:0;appearance:none;max-width:none}
+  select.motivo:not(.puesto){display:none}
   .resumen{padding:11px 12px;margin-bottom:10px}
   .resumen .total .n{font-size:34px}
   h2.sec{font-size:15px;margin:14px 0 3px}
@@ -267,6 +282,11 @@ const TRAMOS = [
   {k:'jovenes', et:'Jóvenes', full:'De 11 a 17 años',         color:'#5EA48D', test:e=>e>=11 && e<18},
   {k:'adultos', et:'Adultos', full:'De 18 años en adelante',  color:'#1F6F5C', test:e=>e>=18}
 ];
+const MOTIVOS = [
+  {k:'no-asiste',    et:'No volvió a asistir', full:'No volvió a asistir luego del bautismo o la confirmación'},
+  {k:'sin-registro', et:'No se registró',      full:'No se registró en el sistema'},
+  {k:'otro',         et:'Otro',                full:'Otro motivo (especificar)'}
+];
 const GENEROS = [
   {k:'H', et:'Hermanos', color:'#1F6F5C'},
   {k:'M', et:'Hermanas', color:'#4A6D8C'}
@@ -277,7 +297,7 @@ let estado = {personas: []};
 let tab = 'panel';
 let busca = '';
 let soloPend = false;
-let filtros = {genero:'', tramo:''};
+let filtros = {genero:'', tramo:'', motivo:''};
 let guardando = null;
 
 /* ---------- Utilidades ---------- */
@@ -344,8 +364,12 @@ const tramoDe = p => { const e=edadDe(p); if(e==='') return ''; const t=TRAMOS.f
 // El informe solo registra sacerdocio para los hermanos, así sale el género de los registros viejos.
 const generoDe = p => (p.genero==='H'||p.genero==='M') ? p.genero : (p.sacerdocio ? 'H' : '');
 const pasa = p => (!filtros.genero || generoDe(p)===filtros.genero)
-               && (!filtros.tramo  || tramoDe(p)===filtros.tramo);
-const hayFiltro = () => !!(filtros.genero || filtros.tramo);
+               && (!filtros.tramo  || tramoDe(p)===filtros.tramo)
+               && (!filtros.motivo || (filtros.motivo==='ninguno' ? !p.motivo : p.motivo===filtros.motivo));
+const motivoDe = p => MOTIVOS.find(m=>m.k===p.motivo) || null;
+const textoMotivo = p => { const m=motivoDe(p); if(!m) return '';
+  return m.k==='otro' && p.motivoNota ? p.motivoNota : m.full; };
+const hayFiltro = () => !!(filtros.genero || filtros.tramo || filtros.motivo);
 const conversos = () => estado.personas.filter(pasa);
 const DIAS_NUEVO = 14;
 const esNuevo = p => p.agregado && (Date.now() - Date.parse(p.agregado)) < DIAS_NUEVO*864e5;
@@ -546,6 +570,12 @@ function filtrosHTML(){
   return `<div class="filtros">
     ${grupo('Género','genero', GENEROS)}
     ${grupo('Edad','tramo', TRAMOS)}
+    <div class="fgrupo"><span class="et">Motivo</span>
+      <select class="motivo${filtros.motivo?' puesto':''}" data-fsel="motivo" aria-label="Filtrar por motivo">
+        <option value="" ${!filtros.motivo?'selected':''}>Todos</option>
+        <option value="ninguno" ${filtros.motivo==='ninguno'?'selected':''}>Sin motivo</option>
+        ${MOTIVOS.map(o=>`<option value="${o.k}" ${filtros.motivo===o.k?'selected':''}>${esc(o.et)}</option>`).join('')}
+      </select></div>
     ${hayFiltro() ? `<span class="filtro-activo">Filtro activo<button data-limpiar="1" title="Quitar los filtros" aria-label="Quitar los filtros">×</button></span>` : ''}
   </div>`;
 }
@@ -603,6 +633,21 @@ function panelHTML(){
   cards.map(([t,a,b])=>`<div class="stat"><h3>${esc(t)}</h3><div class="pct">${pct(a,b)}%</div>
     <div class="frac">${a} de ${b}</div><div class="barra"><i style="width:${pct(a,b)}%"></i></div></div>`).join('') +
   `</div>`;
+
+  // Motivos
+  const conMotivo = L.filter(p=>p.motivo).length;
+  h += `<h2 class="sec">Por qué falta lo que falta</h2>`;
+  if(!conMotivo){
+    h += `<p class="nota">Todavía nadie tiene un motivo registrado. En la lista de cada unidad, el desplegable «Motivo —» al final de cada ficha deja anotar por qué esa persona sigue pendiente.</p>`;
+  }else{
+    const filas = MOTIVOS.map(m=>({et:m.full, n:L.filter(p=>p.motivo===m.k).length}))
+      .concat([{et:'Sin motivo registrado', n:L.length-conMotivo, tenue:true}]);
+    h += `<p class="nota">${conMotivo} de ${L.length} tienen un motivo anotado.</p><div class="motivos-lista">` +
+      filas.map(f=>`<div class="fila"><b>${f.n}</b><span class="bar"><i style="width:${pct(f.n,L.length)}%${f.tenue?';background:var(--pendiente)':''}"></i></span>
+        <span style="${f.tenue?'color:var(--pendiente)':''}">${esc(f.et)} · ${pct(f.n,L.length)}%</span></div>`).join('') + `</div>`;
+    const otros = L.filter(p=>p.motivo==='otro' && p.motivoNota);
+    if(otros.length) h += `<p class="nota" style="margin-top:9px">Detalle de los «Otro»: ${otros.map(p=>esc(corto(p))+' — '+esc(p.motivoNota)).join(' · ')}</p>`;
+  }
 
   // Mosaico
   const col = n => ['#E7EBE6','#CFE2D8','#9FCBB9','#5EA48D','#1F6F5C'][n];
@@ -682,12 +727,18 @@ function filaHTML(p){
   const sac = aplicaSac(p)
     ? `<button class="chip" aria-pressed="${tieneSac(p)}" data-abrir="${p.id}" title="Sacerdocio: ${esc(p.sacerdocio)}"><span class="caja">${check}</span>${esc(tieneSac(p)?p.sacerdocio:'Sin ordenar')}</button>`
     : `<button class="chip na" data-abrir="${p.id}" title="Sin registro de sacerdocio"><span class="caja"></span>Sacerdocio —</button>`;
+  const m = motivoDe(p);
+  const motivo = `<select class="motivo${m?' puesto':''}" data-motivo="${p.id}" aria-label="Motivo de lo que falta"
+      title="${m ? esc(textoMotivo(p)) : 'Por qué le falta lo que le falta'}">
+    <option value="" ${!m?'selected':''}>Motivo —</option>
+    ${MOTIVOS.map(o=>`<option value="${o.k}" ${p.motivo===o.k?'selected':''}>${esc(o.et)}</option>`).join('')}
+  </select>`;
   return `<div class="persona${listo?' completo':''}">
     <div class="quien">
       <div class="nom">${esc(corto(p))}${esNuevo(p)?' <span class="etiqueta nuevo">Añadido recientemente</span>':''}</div>
-      <div class="meta">Confirmación ${fechaCorta(p.confirmacion)}${edadDe(p)!==''?' · '+edadDe(p)+' años':''} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
+      <div class="meta">Confirmación ${fechaCorta(p.confirmacion)}${edadDe(p)!==''?' · '+edadDe(p)+' años':''} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}${p.motivo==='otro'&&p.motivoNota?' · '+esc(p.motivoNota):''}</div>
     </div>
-    <div class="cintas">${chips}${sac}</div>
+    <div class="cintas">${chips}${sac}${motivo}</div>
     <button class="abrir" data-abrir="${p.id}" title="Abrir ficha" aria-label="Abrir ficha de ${esc(corto(p))}">›</button>
   </div>`;
 }
@@ -736,6 +787,14 @@ function alternar(id, campo){
   guardar(p.id); pintar();
 }
 
+function ponerMotivo(id, valor){
+  const p = estado.personas.find(x=>x.id===id); if(!p) return;
+  p.motivo = valor;
+  if(valor !== 'otro') p.motivoNota = '';
+  guardar(p.id); pintar();
+  if(valor === 'otro') abrirFicha(id, 'motivo');   // hay que escribir cuál
+}
+
 function abrirFicha(id, foco){
   const p = estado.personas.find(x=>x.id===id); if(!p) return;
   const sel = (arr,val) => arr.map(o=>`<option value="${esc(o)}" ${o===val?'selected':''}>${esc(o||'— Sin registro —')}</option>`).join('');
@@ -761,6 +820,12 @@ function abrirFicha(id, foco){
       <input type="text" id="f_hfnota" value="${esc(p.nombreHFNota)}" placeholder="Nombre del antepasado registrado (opcional)"></div>
     <div class="campo"><label>Ministrantes asignados (referencia)</label>
       <input type="text" id="f_minnota" value="${esc(p.ministrantesNota)}" placeholder="Nombres, si los quieres anotar"></div>
+    <div class="campo"><label>Motivo de lo que falta</label><select id="f_motivo">
+      <option value="" ${!p.motivo?'selected':''}>— Sin motivo registrado —</option>
+      ${MOTIVOS.map(o=>`<option value="${o.k}" ${p.motivo===o.k?'selected':''}>${esc(o.full)}</option>`).join('')}
+    </select></div>
+    <div class="campo"><label>Detalle del motivo</label>
+      <input type="text" id="f_motivonota" value="${esc(p.motivoNota||'')}" placeholder="Obligatorio si el motivo es «Otro»"></div>
     <div class="campo"><label>Notas</label><textarea id="f_notas" rows="2" placeholder="Necesidades, seguimiento, quién visita">${esc(p.notas)}</textarea></div>
     <div class="recordatorio">Los distintivos de la lista (nombre en HF, ministrantes) se marcan con un toque desde la lista. Aquí solo se anotan los detalles.</div>
     <div class="acciones">
@@ -784,6 +849,8 @@ function abrirFicha(id, foco){
     p.nombreHFNota = document.getElementById('f_hfnota').value.trim();
     p.ministrantesNota = document.getElementById('f_minnota').value.trim();
     p.notas = document.getElementById('f_notas').value.trim();
+    p.motivo = document.getElementById('f_motivo').value;
+    p.motivoNota = document.getElementById('f_motivonota').value.trim();
     if(p.nombreHFNota) p.nombreHF = true;
     cerrar(); guardar(p.id); pintar();
   };
@@ -792,6 +859,7 @@ function abrirFicha(id, foco){
     cerrar(); borrarRemoto(p.id).then(pintar);
   };
   if(foco==='llamamiento') setTimeout(()=>document.getElementById('f_llam').focus(), 60);
+  if(foco==='motivo') setTimeout(()=>document.getElementById('f_motivonota').focus(), 60);
 }
 
 function nuevaFicha(unidad){
@@ -829,7 +897,7 @@ function nuevaFicha(unidad){
       nombre:nom, unidad:document.getElementById('n_unidad').value,
       confirmacion:document.getElementById('n_confirmacion').value, recomendacion:'',
       ministrantes:false, ministrantesNota:'', nombreHF:false, nombreHFNota:'',
-      llamamiento:'', sacerdocio:document.getElementById('n_sac').value, notas:'',
+      llamamiento:'', sacerdocio:document.getElementById('n_sac').value, notas:'', motivo:'', motivoNota:'',
       edad: document.getElementById('n_edad').value.trim()==='' ? '' : parseInt(document.getElementById('n_edad').value,10),
       genero: document.getElementById('n_genero').value
     });
@@ -1042,11 +1110,12 @@ function avisoImport(html, alAplicar){
 
 function descargarCSV(){
   const enc = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const cab = ['Nombre','Unidad','Fecha de la confirmación','Edad','Género','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas','Añadido el'];
+  const cab = ['Nombre','Unidad','Fecha de la confirmación','Edad','Género','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Motivo','Detalle del motivo','Notas','Añadido el'];
   const filas = estado.personas.slice().sort((a,b)=>(b.confirmacion||'').localeCompare(a.confirmacion||''))
     .map(p=>[corto(p),p.unidad,p.confirmacion||'',edadDe(p),
       (GENEROS.find(g=>g.k===generoDe(p))||{et:''}).et.replace(/s$/,''),p.recomendacion,p.ministrantes?'Sí':'No',
-    p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,p.notas,(p.agregado||'').slice(0,10)].map(enc).join(','));
+    p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,
+      (motivoDe(p)||{full:''}).full,p.motivoNota||'',p.notas,(p.agregado||'').slice(0,10)].map(enc).join(','));
   const csv = '\uFEFF' + [cab.map(enc).join(',')].concat(filas).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
@@ -1069,13 +1138,15 @@ function pintar(){
     b.onclick = ()=>{ const [id,k] = b.dataset.tog.split('|'); alternar(id,k); };
   });
   panel.querySelectorAll('[data-abrir]').forEach(b=> b.onclick = ()=> abrirFicha(b.dataset.abrir));
+  panel.querySelectorAll('[data-motivo]').forEach(s=> s.onchange = ()=> ponerMotivo(s.dataset.motivo, s.value));
   panel.querySelectorAll('[data-nuevo]').forEach(b=> b.onclick = ()=> nuevaFicha(b.dataset.nuevo));
   panel.querySelectorAll('[data-filtro]').forEach(b=> b.onclick = ()=>{
     const [campo,valor] = b.dataset.filtro.split('|');
     filtros[campo] = filtros[campo]===valor ? '' : valor;
     pintar();
   });
-  panel.querySelectorAll('[data-limpiar]').forEach(b=> b.onclick = ()=>{ filtros={genero:'',tramo:''}; pintar(); });
+  panel.querySelectorAll('[data-fsel]').forEach(s=> s.onchange = ()=>{ filtros[s.dataset.fsel]=s.value; pintar(); });
+  panel.querySelectorAll('[data-limpiar]').forEach(b=> b.onclick = ()=>{ filtros={genero:'',tramo:'',motivo:''}; pintar(); });
   panel.querySelectorAll('[data-imprimir]').forEach(b=> b.onclick = ()=> imprimir(b.dataset.imprimir));
   panel.querySelectorAll('[data-csv]').forEach(b=> b.onclick = descargarCSV);
   panel.querySelectorAll('[data-diag]').forEach(b=> b.onclick = diagnostico);
