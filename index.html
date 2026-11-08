@@ -56,6 +56,35 @@ nav.tabs::-webkit-scrollbar{display:none}
   box-shadow:0 1px 3px rgba(24,39,35,.06), 0 8px 24px rgba(24,39,35,.05)}
 
 /* ---------- Tarjetas de estadística ---------- */
+.resumen{display:grid;grid-template-columns:auto 1fr;gap:16px 22px;align-items:center;border:1px solid var(--linea);border-radius:var(--r);padding:15px 16px;margin-bottom:12px}
+@media(max-width:620px){.resumen{grid-template-columns:1fr;gap:14px}}
+.resumen .total{text-align:center;padding-right:18px;border-right:1px solid var(--linea)}
+@media(max-width:620px){.resumen .total{border-right:none;border-bottom:1px solid var(--linea);padding:0 0 12px}}
+.resumen .total .n{display:block;font-family:var(--mono);font-weight:600;font-size:46px;line-height:1;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.resumen .total .et{display:block;font-size:12px;color:var(--tinta-suave);margin-top:4px;max-width:11ch;margin-inline:auto}
+.segs{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+@media(max-width:620px){.segs{grid-template-columns:1fr}}
+.seg h3{margin:0 0 7px;font-family:var(--cuerpo);font-weight:600;font-size:12.5px;color:var(--tinta-suave)}
+.seg-barra{display:flex;height:9px;border-radius:99px;overflow:hidden;background:#E7EBE6}
+.seg-barra i{display:block;height:100%}
+.seg-leyenda{display:flex;flex-wrap:wrap;gap:4px 13px;margin-top:8px;font-size:12px;color:var(--tinta-suave);align-items:center}
+.seg-leyenda span{display:flex;align-items:center;gap:5px}
+.seg-leyenda b{font-family:var(--mono);font-weight:600;color:var(--tinta);font-variant-numeric:tabular-nums}
+.seg-leyenda em{font-style:normal;font-family:var(--mono);font-size:11px}
+.seg .vacio-seg{font-size:12px;color:var(--pendiente)}
+
+.filtros{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:14px}
+.fgrupo{display:flex;align-items:center;gap:0;border:1px solid var(--linea-fuerte);border-radius:99px;overflow:hidden;background:var(--superficie)}
+.fgrupo .et{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);padding:0 9px 0 11px}
+.fchip{border:none;background:transparent;font-family:var(--cuerpo);font-size:12.5px;color:var(--tinta-suave);
+  padding:6px 11px;cursor:pointer;border-left:1px solid var(--linea)}
+.fchip:hover{color:var(--tinta);background:#F2F5F1}
+.fchip[aria-pressed="true"]{background:var(--tinta);color:#fff}
+.fchip:focus-visible{outline:2px solid var(--hecho);outline-offset:-2px}
+.filtro-activo{font-size:12.5px;color:var(--alerta);background:var(--alerta-claro);border:1px solid #D9B58A;
+  border-radius:99px;padding:5px 11px;display:flex;align-items:center;gap:8px}
+.filtro-activo button{border:none;background:transparent;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;font-family:var(--cuerpo)}
+
 .grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px}
 .stat{border:1px solid var(--linea);border-radius:var(--r);padding:13px 13px 11px;background:var(--superficie)}
 .stat h3{margin:0;font-family:var(--cuerpo);font-weight:600;font-size:12.5px;color:var(--tinta-suave);line-height:1.25;min-height:2.4em}
@@ -185,12 +214,22 @@ const PASOS = [
 ];
 const RECS = ['','Activa','Vence este mes','Vence el próximo mes','Vencida hace menos de 1 mes','Cancelada'];
 const SAC  = ['','No ha sido ordenado','Aarónico','Melquisedec'];
+const TRAMOS = [
+  {k:'ninos',   et:'Niños',   full:'Menores de 12 años',      color:'#9FCBB9', test:e=>e<12},
+  {k:'jovenes', et:'Jóvenes', full:'De 12 a 17 años',         color:'#5EA48D', test:e=>e>=12 && e<18},
+  {k:'adultos', et:'Adultos', full:'De 18 años en adelante',  color:'#1F6F5C', test:e=>e>=18}
+];
+const GENEROS = [
+  {k:'H', et:'Hermanos', color:'#1F6F5C'},
+  {k:'M', et:'Hermanas', color:'#4A6D8C'}
+];
 const UNIDADES = ['Barrio Bella Vista','Barrio Cristo Rey','Barrio La Fe','Barrio La Paz','Barrio Piantini','Barrio Quisqueya','Rama Los Arroyos'];
 
 let estado = {personas: []};
 let tab = 'panel';
 let busca = '';
 let soloPend = false;
+let filtros = {genero:'', tramo:''};
 let guardando = null;
 
 /* ---------- Utilidades ---------- */
@@ -252,7 +291,14 @@ const aplicaSac = p => !!p.sacerdocio;
 const tieneSac  = p => p.sacerdocio === 'Aarónico' || p.sacerdocio === 'Melquisedec';
 const hecho = (p,k) => k==='recomendacion' ? tieneRec(p) : k==='llamamiento' ? tieneLlam(p) : !!p[k];
 const puntaje = p => PASOS.reduce((n,s)=> n + (hecho(p,s.k)?1:0), 0);
-const conversos = () => estado.personas;
+const edadDe = p => (p.edad!==''&&p.edad!==null&&p.edad!==undefined&&!isNaN(+p.edad)) ? +p.edad : '';
+const tramoDe = p => { const e=edadDe(p); if(e==='') return ''; const t=TRAMOS.find(t=>t.test(e)); return t?t.k:''; };
+// El informe solo registra sacerdocio para los hermanos, así sale el género de los registros viejos.
+const generoDe = p => (p.genero==='H'||p.genero==='M') ? p.genero : (p.sacerdocio ? 'H' : '');
+const pasa = p => (!filtros.genero || generoDe(p)===filtros.genero)
+               && (!filtros.tramo  || tramoDe(p)===filtros.tramo);
+const hayFiltro = () => !!(filtros.genero || filtros.tramo);
+const conversos = () => estado.personas.filter(pasa);
 const DIAS_NUEVO = 14;
 const esNuevo = p => p.agregado && (Date.now() - Date.parse(p.agregado)) < DIAS_NUEVO*864e5;
 const fechaCorta = f => {
@@ -419,7 +465,7 @@ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refresc
 function pintarTabs(){
   const t = document.getElementById('tabs');
   const items = [{id:'panel', nom:'Panel de la estaca', n:conversos().length}]
-    .concat(unidadesActivas().map(u=>({id:u, nom:u.replace('Barrio ','').replace('Rama ',''), n:estado.personas.filter(p=>p.unidad===u).length})));
+    .concat(unidadesActivas().map(u=>({id:u, nom:u.replace('Barrio ','').replace('Rama ',''), n:estado.personas.filter(p=>p.unidad===u && pasa(p)).length})));
   t.innerHTML = items.map(i=>
     `<button class="tab" role="tab" aria-selected="${i.id===tab}" data-tab="${esc(i.id)}">${esc(i.nom)}<span class="n">${i.n}</span></button>`).join('');
   t.querySelectorAll('.tab').forEach(b=> b.onclick = ()=>{ tab=b.dataset.tab; busca=''; pintar(); window.scrollTo({top:0,behavior:'smooth'}); });
@@ -428,6 +474,46 @@ function unidadesActivas(){
   const s = new Set(UNIDADES);
   estado.personas.forEach(p=>s.add(p.unidad));
   return [...s].sort((a,b)=>a.localeCompare(b,'es'));
+}
+
+/* ---------- Filtros ---------- */
+function filtrosHTML(){
+  const grupo = (etiqueta, campo, ops) => `<div class="fgrupo" role="group" aria-label="${esc(etiqueta)}">
+    <span class="et">${esc(etiqueta)}</span>
+    ${[{k:'',et:'Todos'}].concat(ops).map(o=>
+      `<button class="fchip" aria-pressed="${filtros[campo]===o.k}" data-filtro="${campo}|${o.k}"
+        ${o.full?`title="${esc(o.full)}"`:''}>${esc(o.et)}</button>`).join('')}
+  </div>`;
+  return `<div class="filtros">
+    ${grupo('Género','genero', GENEROS)}
+    ${grupo('Edad','tramo', TRAMOS)}
+    ${hayFiltro() ? `<span class="filtro-activo">Filtro activo<button data-limpiar="1" title="Quitar los filtros" aria-label="Quitar los filtros">×</button></span>` : ''}
+  </div>`;
+}
+
+function bloqueSeg(titulo, segs, sinDato, queFalta){
+  const base = segs.reduce((n,s)=>n+s.n, 0);
+  if(!base) return `<div class="seg"><h3>${esc(titulo)}</h3><p class="vacio-seg">Nadie tiene ${esc(queFalta)} registrado todavía.</p></div>`;
+  return `<div class="seg"><h3>${esc(titulo)}</h3>
+    <div class="seg-barra">${segs.filter(s=>s.n).map(s=>
+      `<i style="width:${s.n/base*100}%;background:${s.color}" title="${esc(s.et)}: ${s.n}"></i>`).join('')}</div>
+    <div class="seg-leyenda">${segs.map(s=>
+      `<span><i class="sw" style="background:${s.color}"></i>${esc(s.et)} <b>${pct(s.n,base)}%</b> <em>${s.n}</em></span>`).join('')}
+      ${sinDato ? `<span style="color:var(--pendiente)">Sin ${esc(queFalta)}: <em>${sinDato}</em></span>` : ''}</div>
+  </div>`;
+}
+
+function resumenHTML(L){
+  const conEdad = L.filter(p=>edadDe(p)!=='');
+  const segE = TRAMOS.map(t=>({et:t.et, color:t.color, n:conEdad.filter(p=>tramoDe(p)===t.k).length}));
+  const segG = GENEROS.map(g=>({et:g.et, color:g.color, n:L.filter(p=>generoDe(p)===g.k).length}));
+  return `<div class="resumen">
+    <div class="total"><span class="n">${L.length}</span><span class="et">conversos${hayFiltro()?' con este filtro':' en seguimiento'}</span></div>
+    <div class="segs">
+      ${bloqueSeg('Por edad', segE, L.length-conEdad.length, 'edad')}
+      ${bloqueSeg('Por género', segG, L.filter(p=>!generoDe(p)).length, 'género')}
+    </div>
+  </div>`;
 }
 
 /* ---------- Panel ---------- */
@@ -445,7 +531,11 @@ function panelHTML(){
     ? `<div class="aviso-nuevos"><strong>${recientes.length} converso(s) añadido(s) en los últimos ${DIAS_NUEVO} días.</strong> Salen marcados con «Añadido recientemente» en su unidad: ${recientes.slice(0,6).map(p=>esc(corto(p))).join(', ')}${recientes.length>6?' y '+(recientes.length-6)+' más':''}.</div>`
     : '';
   h += `<h2 class="sec">Cómo va la estaca</h2>
-  <p class="nota">${T} conversos en ${unidadesActivas().length} unidades. Cada porcentaje se calcula solo con lo que está marcado abajo.</p>
+  ${resumenHTML(L)}
+  ${filtrosHTML()}
+  <p class="nota">${hayFiltro()
+      ? `${T} de ${estado.personas.length} conversos cumplen el filtro. Todo lo de abajo cuenta solo a esos ${T}.`
+      : `${T} conversos en ${unidadesActivas().length} unidades. Cada porcentaje se calcula solo con lo que está marcado abajo.`}</p>
   <div class="grid-stats">` +
   cards.map(([t,a,b])=>`<div class="stat"><h3>${esc(t)}</h3><div class="pct">${pct(a,b)}%</div>
     <div class="frac">${a} de ${b}</div><div class="barra"><i style="width:${pct(a,b)}%"></i></div></div>`).join('') +
@@ -466,14 +556,17 @@ function panelHTML(){
   h += `<h2 class="sec">Por unidad</h2>
   <table class="unidades"><thead><tr><th>Unidad</th><th style="text-align:right">Conversos</th>
   <th style="text-align:right">Recom.</th><th style="text-align:right">Minist.</th><th style="text-align:right">Nombre HF</th>
-  <th style="text-align:right">Llamam.</th></tr></thead><tbody>` +
+  <th style="text-align:right">Llamam.</th><th style="text-align:right">Niños</th>
+  <th style="text-align:right">Jóvenes</th><th style="text-align:right">Adultos</th></tr></thead><tbody>` +
   unidadesActivas().map(u=>{
     const g = L.filter(p=>p.unidad===u), n=g.length;
     const c = f => `<td class="num">${pct(g.filter(f).length,n)}%</td>`;
-    return `<tr><td>${esc(u)}</td><td class="num">${n}</td>${c(tieneRec)}${c(p=>p.ministrantes)}${c(p=>p.nombreHF)}${c(tieneLlam)}</tr>`;
+    const ce = g.filter(p=>edadDe(p)!=='').length;
+    const e = k => `<td class="num">${ce ? pct(g.filter(p=>tramoDe(p)===k).length, ce)+'%' : '—'}</td>`;
+    return `<tr><td>${esc(u)}</td><td class="num">${n}</td>${c(tieneRec)}${c(p=>p.ministrantes)}${c(p=>p.nombreHF)}${c(tieneLlam)}${e('ninos')}${e('jovenes')}${e('adultos')}</tr>`;
   }).join('') + `</tbody></table>
   <h2 class="sec">Mantener la lista al día</h2>
-  <p class="nota">Exporta el informe «Conversos recientes» desde LCR (Excel o CSV) y súbelo aquí. Se añaden los conversos nuevos y se actualizan confirmación, recomendación, llamamiento, sacerdocio y ministrantes. Lo que marques de nombre en HF no se toca.</p>
+  <p class="nota">Exporta el informe «Conversos recientes» desde LCR (Excel o CSV) y súbelo aquí. Se añaden los conversos nuevos y se actualizan confirmación, recomendación, llamamiento, sacerdocio, ministrantes, edad y género. Lo que marques de nombre en HF no se toca.</p>
   <div class="tools">
     <button class="btn primario" data-importar="1">Actualizar desde el informe de LCR</button>
     <button class="btn" data-csv="1">Descargar respaldo (CSV)</button>
@@ -487,18 +580,19 @@ function panelHTML(){
 function unidadHTML(u){
   let L = estado.personas.filter(p=>p.unidad===u);
   const total = L.length;
+  L = L.filter(pasa);
   if(busca) L = L.filter(p=>(corto(p)+' '+p.nombre).toLowerCase().includes(busca.toLowerCase()));
   if(soloPend) L = L.filter(p=>puntaje(p)<PASOS.length);
   L.sort((a,b)=> (b.confirmacion||'').localeCompare(a.confirmacion||'') || a.nombre.localeCompare(b.nombre,'es'));
 
-  let h = `<div class="tools">
+  let h = filtrosHTML() + `<div class="tools">
     <input class="buscar" type="text" id="q" placeholder="Buscar por nombre" value="${esc(busca)}" aria-label="Buscar por nombre">
     <label class="toggle-filtro"><input type="checkbox" id="pend" ${soloPend?'checked':''}> Solo con algo pendiente</label>
     <button class="btn primario" data-nuevo="${esc(u)}">Añadir converso</button>
   </div>`;
 
   if(!L.length){
-    h += `<div class="vacio">${total ? 'Ningún nombre coincide con ese filtro.' : 'Aún no hay conversos en esta unidad. Usa «Añadir converso» para registrar el primero.'}</div>`;
+    h += `<div class="vacio">${total ? 'Nadie de esta unidad coincide con el filtro.' : 'Aún no hay conversos en esta unidad. Usa «Añadir converso» para registrar el primero.'}</div>`;
     return h;
   }
   h += L.map(filaHTML).join('');
@@ -525,7 +619,7 @@ function filaHTML(p){
   return `<div class="persona${listo?' completo':''}">
     <div class="quien">
       <div class="nom">${esc(corto(p))}${esNuevo(p)?' <span class="etiqueta nuevo">Añadido recientemente</span>':''}</div>
-      <div class="meta">Confirmación ${fechaCorta(p.confirmacion)} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
+      <div class="meta">Confirmación ${fechaCorta(p.confirmacion)}${edadDe(p)!==''?' · '+edadDe(p)+' años':''} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}</div>
     </div>
     <div class="cintas">${chips}${sac}</div>
     <button class="abrir" data-abrir="${p.id}" title="Abrir ficha" aria-label="Abrir ficha de ${esc(corto(p))}">›</button>
@@ -552,6 +646,13 @@ function abrirFicha(id, foco){
       <div class="campo"><label>Unidad</label><select id="f_unidad">${sel(unidadesActivas(), p.unidad)}</select></div>
       <div class="campo"><label>Fecha de la confirmación</label><input type="date" id="f_confirmacion" value="${esc(p.confirmacion||'')}"></div>
     </div>
+    <div class="fila2">
+      <div class="campo"><label>Edad</label><input type="number" id="f_edad" min="0" max="120" value="${esc(edadDe(p))}" placeholder="Sin registro"></div>
+      <div class="campo"><label>Género</label><select id="f_genero">
+        <option value="" ${!generoDe(p)?'selected':''}>— Sin registro —</option>
+        ${GENEROS.map(g=>`<option value="${g.k}" ${generoDe(p)===g.k?'selected':''}>${esc(g.et.replace(/s$/,''))}</option>`).join('')}
+      </select></div>
+    </div>
     <div class="campo"><label>Recomendación para el templo</label><select id="f_rec">${sel(RECS,p.recomendacion)}</select></div>
     <div class="campo"><label>Llamamiento o asignación</label><input type="text" id="f_llam" value="${esc(p.llamamiento)}" placeholder="Ej. Secretaria de Primaria"></div>
     <div class="campo"><label>Sacerdocio</label><select id="f_sac">${sel(SAC,p.sacerdocio)}</select></div>
@@ -574,6 +675,9 @@ function abrirFicha(id, foco){
     p.unidad = document.getElementById('f_unidad').value;
     p.confirmacion = document.getElementById('f_confirmacion').value;
     p.recomendacion = document.getElementById('f_rec').value;
+    const ed = document.getElementById('f_edad').value.trim();
+    p.edad = ed==='' ? '' : Math.max(0, Math.min(120, parseInt(ed,10)||0));
+    p.genero = document.getElementById('f_genero').value;
     p.llamamiento = document.getElementById('f_llam').value.trim();
     p.sacerdocio = document.getElementById('f_sac').value;
     p.nombreHFNota = document.getElementById('f_hfnota').value.trim();
@@ -599,6 +703,13 @@ function nuevaFicha(unidad){
       <div class="campo"><label>Unidad</label><select id="n_unidad">${sel}</select></div>
       <div class="campo"><label>Fecha de la confirmación</label><input type="date" id="n_confirmacion"></div>
     </div>
+    <div class="fila2">
+      <div class="campo"><label>Edad</label><input type="number" id="n_edad" min="0" max="120" placeholder="Opcional"></div>
+      <div class="campo"><label>Género</label><select id="n_genero">
+        <option value="">— Sin registro —</option>
+        ${GENEROS.map(g=>`<option value="${g.k}">${esc(g.et.replace(/s$/,''))}</option>`).join('')}
+      </select></div>
+    </div>
     <div class="campo"><label>Sacerdocio</label><select id="n_sac">${SAC.map(o=>`<option value="${esc(o)}">${esc(o||'— Sin registro (hermana) —')}</option>`).join('')}</select></div>
     <div class="acciones">
       <button class="btn primario" id="n_guardar">Añadir a la lista</button>
@@ -617,7 +728,9 @@ function nuevaFicha(unidad){
       nombre:nom, unidad:document.getElementById('n_unidad').value,
       confirmacion:document.getElementById('n_confirmacion').value, recomendacion:'',
       ministrantes:false, ministrantesNota:'', nombreHF:false, nombreHFNota:'',
-      llamamiento:'', sacerdocio:document.getElementById('n_sac').value, notas:''
+      llamamiento:'', sacerdocio:document.getElementById('n_sac').value, notas:'',
+      edad: document.getElementById('n_edad').value.trim()==='' ? '' : parseInt(document.getElementById('n_edad').value,10),
+      genero: document.getElementById('n_genero').value
     });
     tab = document.getElementById('n_unidad').value;
     cerrar(); guardar(nid); pintar();
@@ -674,6 +787,27 @@ function aISO(v){
   if(!isNaN(p)){ const f = new Date(p); return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`; }
   return '';
 }
+// El informe escribe el género de varias formas, y a veces con una sola letra:
+// la letra que acompaña al registro de sacerdocio es la de los hermanos.
+function mapaGenero(filas){
+  const m = {};
+  const vals = [...new Set(filas.map(p=>norm(p._gen)).filter(Boolean))];
+  vals.forEach(v=>{
+    if(/^(male|hombre|masculino|varon|hermano)/.test(v)) m[v]='H';
+    else if(/^(female|mujer|femenino|hembra|hermana)/.test(v)) m[v]='M';
+  });
+  const sueltas = vals.filter(v=>!m[v]);
+  if(sueltas.length){
+    const cuenta = {};
+    filas.forEach(p=>{ const v=norm(p._gen); if(sueltas.includes(v) && p.sacerdocio) cuenta[v]=(cuenta[v]||0)+1; });
+    const letraH = Object.keys(cuenta).sort((a,b)=>cuenta[b]-cuenta[a])[0];
+    if(letraH){ m[letraH]='H'; sueltas.forEach(v=>{ if(v!==letraH) m[v]='M'; }); }
+    else if(sueltas.includes('f')){ m['f']='M'; if(sueltas.includes('m')) m['m']='H'; }
+    else if(sueltas.includes('h')){ m['h']='H'; if(sueltas.includes('m')) m['m']='M'; }
+  }
+  return m;
+}
+
 function filasARegistros(filas){
   const idx = filas.findIndex(f => f.some(c => String(c).trim()==='Nombre de preferencia'));
   if(idx < 0) throw new Error('No encontré la fila de encabezados («Nombre de preferencia»). ¿Es el informe de conversos recientes?');
@@ -685,7 +819,9 @@ function filasARegistros(filas){
     conf: col('Fecha de la confirmación') >= 0 ? col('Fecha de la confirmación') : col('Fecha del bautismo'),
     hnas: col('Hermanas ministrantes'), hnos: col('Hermanos ministrantes'),
     llam: col('Llamamientos'), sac: col('Sacerdocio'),
-    thnas: col('Tiene hermanas ministrantes'), thnos: col('Tiene hermanos ministrantes')
+    thnas: col('Tiene hermanas ministrantes'), thnos: col('Tiene hermanos ministrantes'),
+    edad: ['Edad','Age'].map(col).find(i=>i>=0) ?? -1,
+    gen:  ['Género','Genero','Sexo','Gender','Sex'].map(col).find(i=>i>=0) ?? -1
   };
   const out=[];
   for(let i=0;i<filas.length;i++){
@@ -700,10 +836,14 @@ function filasARegistros(filas){
       nombre:nom, unidad:uni, confirmacion:aISO(g(C.conf)),
       recomendacion:String(g(C.rec)).trim(), llamamiento:String(g(C.llam)).trim(), sacerdocio:String(g(C.sac)).trim(),
       ministrantes: String(g(C.thnas)).trim()==='Sí' || String(g(C.thnos)).trim()==='Sí' || !!nota,
-      ministrantesNota: nota
+      ministrantesNota: nota,
+      edad: (()=>{ const v=String(g(C.edad)).trim(); return /^\d{1,3}$/.test(v) ? +v : ''; })(),
+      _gen: String(g(C.gen)).trim()
     });
   }
   if(!out.length) throw new Error('El archivo no traía filas de personas.');
+  const mg = mapaGenero(out);
+  out.forEach(p=>{ p.genero = mg[norm(p._gen)] || ''; delete p._gen; });
   return out;
 }
 
@@ -722,11 +862,14 @@ async function importar(file){
   }catch(e){ avisoImport(`<p class="nota">${esc(e.message)}</p>`); return; }
 
   const mapa = new Map(estado.personas.map(p=>[norm(p.nombre), p]));
-  const nuevos=[], cambios=[];
+  const nuevos=[], cambios=[], parejas=[];
   regs.forEach(r=>{
     const p = mapa.get(norm(r.nombre));
     if(!p){ nuevos.push(r); return; }
+    parejas.push({p, r});
     const dif=[];
+    if(r.edad!=='' && r.edad !== edadDe(p)) dif.push(['edad','Edad', edadDe(p)===''?'sin registro':edadDe(p)+' años', r.edad+' años']);
+    if(r.genero && r.genero !== generoDe(p)) dif.push(['genero','Género', generoDe(p)==='H'?'Hermano':generoDe(p)==='M'?'Hermana':'sin registro', r.genero==='H'?'Hermano':'Hermana']);
     if(r.recomendacion !== p.recomendacion) dif.push(['recomendacion','Recomendación', p.recomendacion||'sin registro', r.recomendacion||'sin registro']);
     if(r.llamamiento !== p.llamamiento) dif.push(['llamamiento','Llamamiento', p.llamamiento||'ninguno', r.llamamiento||'ninguno']);
     if(r.sacerdocio !== p.sacerdocio) dif.push(['sacerdocio','Sacerdocio', p.sacerdocio||'sin registro', r.sacerdocio||'sin registro']);
@@ -760,6 +903,13 @@ async function importar(file){
       estado.personas.push(Object.assign({id, agregado:new Date().toISOString(), nombreHF:false, nombreHFNota:'', notas:''}, r));
       tocados.push(id);
     });
+    // edad y género se guardan siempre que el informe los traiga, cambien o no
+    parejas.forEach(({p,r})=>{
+      let toco=false;
+      if(r.edad!=='' && r.edad!==p.edad){ p.edad=r.edad; toco=true; }
+      if(r.genero && r.genero!==p.genero){ p.genero=r.genero; toco=true; }
+      if(toco) tocados.push(p.id);
+    });
     cambios.forEach(c=>{
       c.dif.forEach(d=>{
         if(d[0]==='ministrantes'){ c.p.ministrantes = true; c.p.ministrantesNota = c.r.ministrantesNota; }
@@ -791,9 +941,10 @@ function avisoImport(html, alAplicar){
 
 function descargarCSV(){
   const enc = v => `"${String(v??'').replace(/"/g,'""')}"`;
-  const cab = ['Nombre','Unidad','Fecha de la confirmación','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas','Añadido el'];
+  const cab = ['Nombre','Unidad','Fecha de la confirmación','Edad','Género','Recomendación','Ministrantes','Nombre registrado en HF','Nombre en HF (detalle)','Llamamiento','Sacerdocio','Notas','Añadido el'];
   const filas = estado.personas.slice().sort((a,b)=>(b.confirmacion||'').localeCompare(a.confirmacion||''))
-    .map(p=>[corto(p),p.unidad,p.confirmacion||'',p.recomendacion,p.ministrantes?'Sí':'No',
+    .map(p=>[corto(p),p.unidad,p.confirmacion||'',edadDe(p),
+      (GENEROS.find(g=>g.k===generoDe(p))||{et:''}).et.replace(/s$/,''),p.recomendacion,p.ministrantes?'Sí':'No',
     p.nombreHF?'Sí':'No',p.nombreHFNota,p.llamamiento,p.sacerdocio,p.notas,(p.agregado||'').slice(0,10)].map(enc).join(','));
   const csv = '\uFEFF' + [cab.map(enc).join(',')].concat(filas).join('\r\n');
   const a = document.createElement('a');
@@ -817,6 +968,12 @@ function pintar(){
   });
   panel.querySelectorAll('[data-abrir]').forEach(b=> b.onclick = ()=> abrirFicha(b.dataset.abrir));
   panel.querySelectorAll('[data-nuevo]').forEach(b=> b.onclick = ()=> nuevaFicha(b.dataset.nuevo));
+  panel.querySelectorAll('[data-filtro]').forEach(b=> b.onclick = ()=>{
+    const [campo,valor] = b.dataset.filtro.split('|');
+    filtros[campo] = filtros[campo]===valor ? '' : valor;
+    pintar();
+  });
+  panel.querySelectorAll('[data-limpiar]').forEach(b=> b.onclick = ()=>{ filtros={genero:'',tramo:''}; pintar(); });
   panel.querySelectorAll('[data-csv]').forEach(b=> b.onclick = descargarCSV);
   panel.querySelectorAll('[data-diag]').forEach(b=> b.onclick = diagnostico);
   const inp = document.getElementById('archivo');
