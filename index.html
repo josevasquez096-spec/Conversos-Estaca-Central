@@ -360,15 +360,23 @@ function recalcularNombres(){
 }
 const corto = p => _cortos.get(p.id) || String(p.nombre||'').split(',').slice(1).join(',').trim().split(/\s+/)[0] || p.nombre || '?';
 
+const edadDe = p => (p.edad!==''&&p.edad!==null&&p.edad!==undefined&&!isNaN(+p.edad)) ? +p.edad : '';
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tieneRec = p => !!p.recomendacion && p.recomendacion !== 'Cancelada' && !/^Vencida/.test(p.recomendacion);
 const recVence = p => p.recomendacion === 'Vence este mes' || p.recomendacion === 'Vence el próximo mes';
 const tieneLlam = p => !!(p.llamamiento && p.llamamiento.trim());
 const aplicaSac = p => !!p.sacerdocio;
 const tieneSac  = p => p.sacerdocio === 'Aarónico' || p.sacerdocio === 'Melquisedec';
-const hecho = (p,k) => k==='recomendacion' ? tieneRec(p) : k==='llamamiento' ? tieneLlam(p) : !!p[k];
-const puntaje = p => PASOS.reduce((n,s)=> n + (hecho(p,s.k)?1:0), 0);
-const edadDe = p => (p.edad!==''&&p.edad!==null&&p.edad!==undefined&&!isNaN(+p.edad)) ? +p.edad : '';
+// Antes de los 12 no se recibe recomendación, y sin recomendación no se lleva un nombre al templo.
+const EDAD_TEMPLO = 12;
+const SOLO_TEMPLO = ['recomendacion','nombreHF'];
+const menorDeTemplo = p => { const e = edadDe(p); return e !== '' && e < EDAD_TEMPLO; };
+const aplica = (p,k) => !(SOLO_TEMPLO.includes(k) && menorDeTemplo(p));
+const pasosDe = p => PASOS.filter(s=>aplica(p,s.k));
+const hecho = (p,k) => !aplica(p,k) ? false
+  : k==='recomendacion' ? tieneRec(p) : k==='llamamiento' ? tieneLlam(p) : !!p[k];
+const puntaje = p => pasosDe(p).reduce((n,s)=> n + (hecho(p,s.k)?1:0), 0);
+const cumplidos = (L,k) => { const ap = L.filter(p=>aplica(p,k)); return [ap.filter(p=>hecho(p,k)).length, ap.length]; };
 const tramoDe = p => { const e=edadDe(p); if(e==='') return ''; const t=TRAMOS.find(t=>t.test(e)); return t?t.k:''; };
 // El informe solo registra sacerdocio para los hermanos, así sale el género de los registros viejos.
 const generoDe = p => (p.genero==='H'||p.genero==='M') ? p.genero : (p.sacerdocio ? 'H' : '');
@@ -666,7 +674,7 @@ function resumenHTML(L, unidad){
   const conEdad = L.filter(p=>edadDe(p)!=='');
   const segE = TRAMOS.map(t=>({et:t.et, full:t.full, color:t.color, n:conEdad.filter(p=>tramoDe(p)===t.k).length}));
   const segG = GENEROS.map(g=>({et:g.et, color:g.color, n:L.filter(p=>generoDe(p)===g.k).length}));
-  const pasos = PASOS.map(s=>({et:s.et, full:s.full, n:L.filter(p=>hecho(p,s.k)).length}));
+  const pasos = PASOS.map(s=>{ const [n,de] = cumplidos(L,s.k); return {et:s.et, full:s.full, n, de}; });
   return `<div class="resumen">
     <div class="total"><span class="n">${L.length}</span><span class="et">conversos${hayFiltro()?' con este filtro':unidad?' en la unidad':' en seguimiento'}</span></div>
     <div class="segs">
@@ -674,7 +682,7 @@ function resumenHTML(L, unidad){
       ${bloqueSeg('Por género', segG, L.filter(p=>!generoDe(p)).length, 'género')}
       ${unidad ? `<div class="seg" style="grid-column:1/-1"><h3>Lo que ya se cumplió</h3>
         <div class="seg-leyenda">${pasos.map(s=>
-          `<span title="${esc(s.full)}"><b>${pct(s.n,L.length)}%</b> ${esc(s.et)} <em>${s.n} de ${L.length}</em></span>`).join('')}</div></div>` : ''}
+          `<span title="${esc(s.full)}"><b>${pct(s.n,s.de)}%</b> ${esc(s.et)} <em>${s.n} de ${s.de}</em></span>`).join('')}</div></div>` : ''}
     </div>
   </div>`;
 }
@@ -683,10 +691,10 @@ function resumenHTML(L, unidad){
 function panelHTML(){
   const L = conversos(), T = L.length;
   const cards = [
-    ['Con recomendación para el templo', L.filter(tieneRec).length, T],
-    ['Con hermanos o hermanas ministrantes', L.filter(p=>p.ministrantes).length, T],
-    ['Con su primer nombre registrado en HF', L.filter(p=>p.nombreHF).length, T],
-    ['Con llamamiento o asignación', L.filter(tieneLlam).length, T],
+    ['Con recomendación para el templo', ...cumplidos(L,'recomendacion')],
+    ['Con hermanos o hermanas ministrantes', ...cumplidos(L,'ministrantes')],
+    ['Con su primer nombre registrado en HF', ...cumplidos(L,'nombreHF')],
+    ['Con llamamiento o asignación', ...cumplidos(L,'llamamiento')],
     ['Hermanos ordenados al sacerdocio', L.filter(tieneSac).length, L.filter(aplicaSac).length]
   ];
   const recientes = L.filter(esNuevo);
@@ -720,15 +728,17 @@ function panelHTML(){
   }
 
   // Mosaico
-  const col = n => ['#E7EBE6','#CFE2D8','#9FCBB9','#5EA48D','#1F6F5C'][n];
+  const ESCALA = ['#E7EBE6','#CFE2D8','#9FCBB9','#5EA48D','#1F6F5C'];
+  const nivel = p => { const de = pasosDe(p).length; return de ? Math.round(puntaje(p)/de*4) : 0; };
   h += `<h2 class="sec">Un cuadro por converso</h2>
-  <p class="nota">El color muestra cuántos de los cuatro pasos lleva cada persona. Toca un cuadro para abrir su ficha.</p>
+  <p class="nota">El color muestra qué parte de sus pasos lleva cada persona. Los menores de ${EDAD_TEMPLO} tienen dos pasos, no cuatro. Toca un cuadro para abrir su ficha.</p>
   <div class="mosaico">` +
-  L.slice().sort((a,b)=>puntaje(a)-puntaje(b)).map(p=>{
-    const n = puntaje(p);
-    return `<button class="tile" style="background:${col(n)}" data-abrir="${p.id}" title="${esc(corto(p))} — ${n} de 4" aria-label="${esc(corto(p))}, ${n} de 4 pasos"></button>`;
+  L.slice().sort((a,b)=>nivel(a)-nivel(b)).map(p=>{
+    const n = puntaje(p), de = pasosDe(p).length;
+    return `<button class="tile" style="background:${ESCALA[nivel(p)]}" data-abrir="${p.id}" title="${esc(corto(p))} — ${n} de ${de}" aria-label="${esc(corto(p))}, ${n} de ${de} pasos"></button>`;
   }).join('') + `</div>
-  <div class="leyenda">` + [0,1,2,3,4].map(n=>`<span><i class="sw" style="background:${col(n)}"></i>${n} de 4</span>`).join('') + `</div>`;
+  <div class="leyenda">` + ['Nada','Poco','La mitad','Casi todo','Todo'].map((et,n)=>
+    `<span><i class="sw" style="background:${ESCALA[n]}"></i>${et}</span>`).join('') + `</div>`;
 
   // Tabla por unidad
   h += `<h2 class="sec">Por unidad</h2>
@@ -738,10 +748,10 @@ function panelHTML(){
   <th style="text-align:right">Jóvenes</th><th style="text-align:right">Adultos</th></tr></thead><tbody>` +
   unidadesActivas().map(u=>{
     const g = L.filter(p=>p.unidad===u), n=g.length;
-    const c = f => `<td class="num">${pct(g.filter(f).length,n)}%</td>`;
+    const c = k => { const [a,de] = cumplidos(g,k); return `<td class="num"${de<n?` title="${de} de ${n} aplican"`:''}>${de?pct(a,de)+'%':'—'}</td>`; };
     const ce = g.filter(p=>edadDe(p)!=='').length;
     const e = k => `<td class="num">${ce ? pct(g.filter(p=>tramoDe(p)===k).length, ce)+'%' : '—'}</td>`;
-    return `<tr><td>${esc(u)}</td><td class="num">${n}</td>${c(tieneRec)}${c(p=>p.ministrantes)}${c(p=>p.nombreHF)}${c(tieneLlam)}${e('ninos')}${e('jovenes')}${e('adultos')}</tr>`;
+    return `<tr><td>${esc(u)}</td><td class="num">${n}</td>${c('recomendacion')}${c('ministrantes')}${c('nombreHF')}${c('llamamiento')}${e('ninos')}${e('jovenes')}${e('adultos')}</tr>`;
   }).join('') + `</tbody></table></div>
   <h2 class="sec">Mantener la lista al día</h2>
   <p class="nota">Exporta el informe «Conversos recientes» desde LCR (Excel o CSV) y súbelo aquí. Se añaden los conversos nuevos y se actualizan confirmación, recomendación, llamamiento, sacerdocio, ministrantes, edad y género. Lo que marques de nombre en HF no se toca.</p>
@@ -763,7 +773,7 @@ function unidadHTML(u, imprimir){
   const total = L.length;
   L = L.filter(pasa);
   if(busca) L = L.filter(p=>(corto(p)+' '+p.nombre).toLowerCase().includes(busca.toLowerCase()));
-  if(soloPend) L = L.filter(p=>puntaje(p)<PASOS.length);
+  if(soloPend) L = L.filter(p=>puntaje(p)<pasosDe(p).length);
   L.sort((a,b)=> (b.confirmacion||'').localeCompare(a.confirmacion||'') || a.nombre.localeCompare(b.nombre,'es'));
 
   let h = resumenHTML(L, u) + (imprimir ? '' : filtrosHTML() + `<div class="tools">
@@ -783,9 +793,12 @@ function unidadHTML(u, imprimir){
 }
 
 function filaHTML(p){
-  const n = puntaje(p), listo = n===PASOS.length;
+  const dePasos = pasosDe(p).length;
+  const n = puntaje(p), listo = n===dePasos;
   const check = `<svg viewBox="0 0 10 10" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 5.2 3.9 7.6 8.5 2.4"/></svg>`;
   const chips = PASOS.map(s=>{
+    if(!aplica(p,s.k))
+      return `<button class="chip na" data-abrir="${p.id}" title="No aplica: tiene ${edadDe(p)} años, y la recomendación se recibe a partir de los ${EDAD_TEMPLO}"><span class="caja"></span>${esc(s.et)} —</button>`;
     const on = hecho(p,s.k);
     const aviso = s.k==='recomendacion' && recVence(p);
     let et = s.et;
@@ -807,7 +820,7 @@ function filaHTML(p){
   return `<div class="persona${listo?' completo':''}">
     <div class="quien">
       <div class="nom">${esc(corto(p))}${esNuevo(p)?' <span class="etiqueta nuevo">Añadido recientemente</span>':''}</div>
-      <div class="meta">Confirmación ${fechaCorta(p.confirmacion)}${edadDe(p)!==''?' · '+edadDe(p)+' años':''} · ${n} de ${PASOS.length}${tieneLlam(p)?' · '+esc(p.llamamiento):''}${p.motivo==='otro'&&p.motivoNota?' · '+esc(p.motivoNota):''}</div>
+      <div class="meta">Confirmación ${fechaCorta(p.confirmacion)}${edadDe(p)!==''?' · '+edadDe(p)+' años':''} · ${n} de ${dePasos}${tieneLlam(p)?' · '+esc(p.llamamiento):''}${p.motivo==='otro'&&p.motivoNota?' · '+esc(p.motivoNota):''}</div>
     </div>
     <div class="cintas">${chips}${sac}${motivo}</div>
     <button class="abrir" data-abrir="${p.id}" title="Abrir ficha" aria-label="Abrir ficha de ${esc(corto(p))}">›</button>
@@ -852,6 +865,7 @@ function imprimir(que){
 /* ---------- Acciones ---------- */
 function alternar(id, campo){
   const p = estado.personas.find(x=>x.id===id); if(!p) return;
+  if(!aplica(p, campo)) return;
   if(campo==='recomendacion'){ p.recomendacion = tieneRec(p) ? '' : 'Activa'; }
   else if(campo==='llamamiento'){ if(tieneLlam(p)) p.llamamiento=''; else { abrirFicha(id, 'llamamiento'); return; } }
   else p[campo] = !p[campo];
@@ -888,11 +902,14 @@ function abrirFicha(id, foco){
         ${GENEROS.map(g=>`<option value="${g.k}" ${generoDe(p)===g.k?'selected':''}>${esc(g.et.replace(/s$/,''))}</option>`).join('')}
       </select></div>
     </div>
-    <div class="campo"><label>Recomendación para el templo</label><select id="f_rec">${sel(RECS,p.recomendacion)}</select></div>
+    <div class="campo"><label>Recomendación para el templo</label>
+      <select id="f_rec" ${menorDeTemplo(p)?'disabled':''}>${sel(RECS,p.recomendacion)}</select></div>
     <div class="campo"><label>Llamamiento o asignación</label><input type="text" id="f_llam" value="${esc(p.llamamiento)}" placeholder="Ej. Secretaria de Primaria"></div>
     <div class="campo"><label>Sacerdocio</label><select id="f_sac">${sel(SAC,p.sacerdocio)}</select></div>
     <div class="campo"><label>Primer nombre registrado en Historia Familiar</label>
-      <input type="text" id="f_hfnota" value="${esc(p.nombreHFNota)}" placeholder="Nombre del antepasado registrado (opcional)"></div>
+      <input type="text" id="f_hfnota" value="${esc(p.nombreHFNota)}" ${menorDeTemplo(p)?'disabled':''}
+        placeholder="Nombre del antepasado registrado (opcional)"></div>
+    ${menorDeTemplo(p) ? `<div class="recordatorio">Tiene ${edadDe(p)} años. La recomendación para el templo se recibe a partir de los ${EDAD_TEMPLO}, así que esos dos pasos no le aplican y no cuentan en los porcentajes.</div>` : ''}
     <div class="campo"><label>Ministrantes asignados (referencia)</label>
       <input type="text" id="f_minnota" value="${esc(p.ministrantesNota)}" placeholder="Nombres, si los quieres anotar"></div>
     <div class="campo"><label>Motivo de lo que falta</label><select id="f_motivo">
@@ -931,7 +948,7 @@ function abrirFicha(id, foco){
     p.notas = document.getElementById('f_notas').value.trim();
     p.motivo = document.getElementById('f_motivo').value;
     p.motivoNota = document.getElementById('f_motivonota').value.trim();
-    if(p.nombreHFNota) p.nombreHF = true;
+    if(p.nombreHFNota && !menorDeTemplo(p)) p.nombreHF = true;
     const cambios = CAMPOS_FICHA.filter(([k])=> String(antes[k]??'') !== String(p[k]??'')).map(([,et])=>et);
     if(cambios.length) anotar('Editó la ficha', p, cambios.join(', '));
     cerrar(); guardar(p.id); pintar();
