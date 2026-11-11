@@ -167,6 +167,15 @@ select.motivo{font-family:var(--cuerpo);font-size:12px;color:var(--tinta-suave);
   border:1px dashed var(--linea-fuerte);border-radius:99px;padding:5px 9px;max-width:200px;cursor:pointer}
 select.motivo.puesto{border-style:solid;border-color:#D9B58A;background:var(--alerta-claro);color:var(--alerta);font-weight:500}
 select.motivo:focus-visible{outline:2px solid var(--tinta);outline-offset:2px}
+.reg{max-height:56vh;overflow-y:auto;margin-top:12px;border-top:1px solid var(--linea)}
+.reg .dia{position:sticky;top:0;background:var(--superficie);font-family:var(--mono);font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);padding:9px 0 5px;border-bottom:1px solid var(--linea)}
+.reg .ent{display:grid;grid-template-columns:46px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--linea);font-size:13px}
+.reg .ent:last-child{border-bottom:none}
+.reg .hh{font-family:var(--mono);font-size:11px;color:var(--pendiente);padding-top:2px}
+.reg .qq{font-weight:600}
+.reg .dd{color:var(--tinta-suave);font-size:12.5px}
+.reg .dd .donde{color:var(--tinta)}
 .motivos-lista{display:flex;flex-direction:column;gap:6px;margin-top:4px}
 .motivos-lista .fila{display:flex;align-items:center;gap:9px;font-size:13px}
 .motivos-lista .bar{flex:1;height:7px;border-radius:99px;background:#E7EBE6;overflow:hidden;min-width:40px}
@@ -383,7 +392,17 @@ const pct = (a,b) => b ? Math.round(a/b*100) : 0;
 /* ---------- Guardado (servidor) ---------- */
 const API = '/api/datos';
 let codigo = '';   // nunca se guarda: se pide en cada visita
+let quien = '';    // nombre de quien está usando la página, para el registro
 let sucios = new Set(), pendiente = null, ultimoSync = 0;
+let porAnotar = [];
+
+// Cada cambio queda anotado con quién lo hizo y dónde; se manda junto al guardado.
+function anotar(accion, persona, detalle){
+  porAnotar.push({accion,
+    unidad:  persona ? persona.unidad : '',
+    persona: persona ? corto(persona) : '',
+    detalle: detalle || ''});
+}
 
 function marcar(txt, ok=true){
   document.getElementById('pEstado').textContent = txt;
@@ -391,8 +410,8 @@ function marcar(txt, ok=true){
 }
 const hora = () => new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
 
-async function pedir(metodo, cuerpo){
-  const r = await fetch(API, {
+async function pedir(metodo, cuerpo, sufijo){
+  const r = await fetch(API + (sufijo || ''), {
     method: metodo,
     headers: Object.assign({'Content-Type':'application/json'}, codigo ? {'x-codigo':codigo} : {}),
     body: cuerpo ? JSON.stringify(cuerpo) : undefined
@@ -411,7 +430,10 @@ function guardar(ids){
     const lote = estado.personas.filter(p=>sucios.has(p.id));
     const ids2 = new Set(lote.map(p=>p.id));
     try{
-      await pedir('POST', {guardar: lote});
+      const enviadas = porAnotar; porAnotar = [];
+      try{
+        await pedir('POST', {guardar: lote, registro: enviadas, quien});
+      }catch(err){ porAnotar = enviadas.concat(porAnotar); throw err; }
       ids2.forEach(i=>sucios.delete(i));
       ultimoSync = Date.now();
       marcar('Guardado · ' + hora());
@@ -425,7 +447,8 @@ function guardar(ids){
 async function borrarRemoto(id){
   estado.personas = estado.personas.filter(p=>p.id!==id);
   sucios.delete(id);
-  try{ await pedir('POST', {borrar:[id]}); marcar('Guardado · ' + hora()); }
+  const enviadas = porAnotar; porAnotar = [];
+  try{ await pedir('POST', {borrar:[id], registro: enviadas, quien}); marcar('Guardado · ' + hora()); }
   catch(e){ if(e.codigo) pedirCodigo('El código cambió o dejó de ser válido. Escríbelo otra vez.'); else marcar('No se pudo eliminar: ' + e.message, false); }
 }
 
@@ -433,25 +456,72 @@ let intentos = 0;
 function pedirCodigo(error){
   const modal = document.getElementById('modal');
   modal.innerHTML = `
-    <h3 id="mTitulo">Código de acceso</h3>
-    <p class="nota">Esta lista tiene datos de miembros. Pide el código a quien administra la página.</p>
+    <h3 id="mTitulo">Entrar</h3>
+    <p class="nota">Esta lista tiene datos de miembros. Pide el código a quien administra la página. Tu nombre queda junto a cada cambio que hagas.</p>
+    <div class="campo"><label>Tu nombre</label><input type="text" id="c_nombre" autocomplete="name" value="${esc(quien)}" placeholder="Nombre y apellido"></div>
     <div class="campo"><label>Código</label><input type="password" id="c_codigo" autocomplete="off"></div>
     ${error ? `<div class="error-codigo" id="c_error">${esc(error)}</div>` : ''}
     <div class="acciones"><button class="btn primario" id="c_entrar">Entrar</button></div>`;
   document.getElementById('velo').classList.add('abierto');
   if(error){ modal.classList.add('sacude'); setTimeout(()=>modal.classList.remove('sacude'), 320); }
   const inp = document.getElementById('c_codigo');
-  setTimeout(()=>inp.focus(), 60);
+  const nom = document.getElementById('c_nombre');
+  try{ if(!nom.value) nom.value = localStorage.getItem('cec_quien') || ''; }catch(e){}
+  setTimeout(()=>(nom.value ? inp : nom).focus(), 60);
   const entrar = async ()=>{
-    const v = inp.value.trim();
-    if(!v){ return pedirCodigo('Escribe el código para entrar.'); }
-    codigo = v;
+    const n = nom.value.trim(), v = inp.value.trim();
+    if(!n){ quien = ''; return pedirCodigo('Escribe tu nombre: queda junto a cada cambio que hagas.'); }
+    if(!v){ quien = n; return pedirCodigo('Escribe el código para entrar.'); }
+    quien = n; codigo = v;
+    try{ localStorage.setItem('cec_quien', n); }catch(e){}
     marcar('Comprobando el código…');
     document.getElementById('velo').classList.remove('abierto');
     await cargar(); pintar();
   };
   document.getElementById('c_entrar').onclick = entrar;
+  nom.onkeydown = e => { if(e.key==='Enter') inp.focus(); };
   inp.onkeydown = e => { if(e.key==='Enter') entrar(); };
+}
+
+function cuandoTexto(iso){
+  const d = new Date(iso); if(isNaN(d)) return '';
+  const hh = d.toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+  const hoy = new Date(), ayer = new Date(Date.now()-864e5);
+  const mismo = (a,b)=> a.toDateString()===b.toDateString();
+  if(mismo(d,hoy))  return {dia:'Hoy', hora:hh};
+  if(mismo(d,ayer)) return {dia:'Ayer', hora:hh};
+  return {dia: d.toLocaleDateString('es-DO',{day:'numeric',month:'long',year:'numeric'}), hora:hh};
+}
+
+async function verRegistro(){
+  const modal = document.getElementById('modal');
+  const marco = (cuerpo) => {
+    modal.innerHTML = `<h3 id="mTitulo">Cambios recientes</h3>${cuerpo}
+      <div class="acciones"><button class="btn" id="r_cerrar">Cerrar</button></div>`;
+    document.getElementById('velo').classList.add('abierto');
+    document.getElementById('r_cerrar').onclick = ()=> document.getElementById('velo').classList.remove('abierto');
+  };
+  marco('<p class="nota">Buscando…</p>');
+  let d;
+  try{ d = await pedir('GET', null, '?registro=1&t=' + Date.now()); }
+  catch(e){
+    if(e.codigo){ pedirCodigo('El código cambió o dejó de ser válido. Escríbelo otra vez.'); return; }
+    return marco(`<p class="nota">No se pudo leer el registro: ${esc(e.message)}</p>`);
+  }
+  const L = d.registro || [];
+  if(!L.length) return marco('<p class="nota">Todavía no hay cambios anotados. Desde ahora, cada vez que alguien marque algo queda aquí con su nombre.</p>');
+
+  let html = `<p class="nota">Lo que ha hecho cada quien, de lo más reciente a lo más viejo. Se guardan los últimos 600 cambios.</p><div class="reg">`;
+  let dia = '';
+  L.forEach(e=>{
+    const c = cuandoTexto(e.t) || {dia:'', hora:''};
+    if(c.dia !== dia){ dia = c.dia; html += `<div class="dia">${esc(dia)}</div>`; }
+    const donde = [e.persona, e.unidad && e.unidad.replace('Barrio ','').replace('Rama ','')].filter(Boolean).join(' · ');
+    html += `<div class="ent"><span class="hh">${esc(c.hora)}</span><span>
+      <span class="qq">${esc(e.quien||'Sin nombre')}</span> · ${esc(e.accion||'')}${e.detalle?' <b>'+esc(e.detalle)+'</b>':''}
+      ${donde ? `<div class="dd"><span class="donde">${esc(donde)}</span></div>` : ''}</span></div>`;
+  });
+  marco(html + '</div>');
 }
 
 async function diagnostico(){
@@ -678,6 +748,7 @@ function panelHTML(){
   <div class="tools">
     <button class="btn primario" data-importar="1">Actualizar desde el informe de LCR</button>
     <button class="btn" data-csv="1">Descargar respaldo (CSV)</button>
+    <button class="btn" data-registro="1">Ver cambios</button>
     <button class="btn" data-imprimir="panel">Imprimir el panel</button>
     <button class="btn" data-imprimir="todo">Imprimir todo</button>
     <button class="btn sutil" data-diag="1">Probar conexión</button>
@@ -784,6 +855,8 @@ function alternar(id, campo){
   if(campo==='recomendacion'){ p.recomendacion = tieneRec(p) ? '' : 'Activa'; }
   else if(campo==='llamamiento'){ if(tieneLlam(p)) p.llamamiento=''; else { abrirFicha(id, 'llamamiento'); return; } }
   else p[campo] = !p[campo];
+  const paso = PASOS.find(s=>s.k===campo);
+  anotar(hecho(p,campo) ? 'Marcó' : 'Desmarcó', p, paso ? paso.et : campo);
   guardar(p.id); pintar();
 }
 
@@ -791,6 +864,8 @@ function ponerMotivo(id, valor){
   const p = estado.personas.find(x=>x.id===id); if(!p) return;
   p.motivo = valor;
   if(valor !== 'otro') p.motivoNota = '';
+  const m = motivoDe(p);
+  anotar(m ? 'Puso motivo' : 'Quitó el motivo', p, m ? m.full : '');
   guardar(p.id); pintar();
   if(valor === 'otro') abrirFicha(id, 'motivo');   // hay que escribir cuál
 }
@@ -836,6 +911,11 @@ function abrirFicha(id, foco){
   document.getElementById('velo').classList.add('abierto');
   const cerrar = ()=> document.getElementById('velo').classList.remove('abierto');
   document.getElementById('f_cerrar').onclick = cerrar;
+  const CAMPOS_FICHA = [['nombre','Nombre'],['unidad','Unidad'],['confirmacion','Confirmación'],
+    ['edad','Edad'],['genero','Género'],['recomendacion','Recomendación'],['llamamiento','Llamamiento'],
+    ['sacerdocio','Sacerdocio'],['nombreHFNota','Nombre en HF'],['ministrantesNota','Ministrantes'],
+    ['motivo','Motivo'],['motivoNota','Detalle del motivo'],['notas','Notas']];
+  const antes = {}; CAMPOS_FICHA.forEach(([k])=> antes[k] = p[k]);
   document.getElementById('f_guardar').onclick = ()=>{
     p.nombre = document.getElementById('f_nombre').value.trim() || p.nombre;
     p.unidad = document.getElementById('f_unidad').value;
@@ -852,10 +932,13 @@ function abrirFicha(id, foco){
     p.motivo = document.getElementById('f_motivo').value;
     p.motivoNota = document.getElementById('f_motivonota').value.trim();
     if(p.nombreHFNota) p.nombreHF = true;
+    const cambios = CAMPOS_FICHA.filter(([k])=> String(antes[k]??'') !== String(p[k]??'')).map(([,et])=>et);
+    if(cambios.length) anotar('Editó la ficha', p, cambios.join(', '));
     cerrar(); guardar(p.id); pintar();
   };
   document.getElementById('f_borrar').onclick = ()=>{
     if(!confirm(`¿Eliminar a ${corto(p)} de la lista? Esta acción no se puede deshacer.`)) return;
+    anotar('Eliminó', p, '');
     cerrar(); borrarRemoto(p.id).then(pintar);
   };
   if(foco==='llamamiento') setTimeout(()=>document.getElementById('f_llam').focus(), 60);
@@ -902,6 +985,8 @@ function nuevaFicha(unidad){
       genero: document.getElementById('n_genero').value
     });
     tab = document.getElementById('n_unidad').value;
+    recalcularNombres();
+    anotar('Añadió a mano', estado.personas.find(x=>x.id===nid), '');
     cerrar(); guardar(nid); pintar();
   };
 }
@@ -1086,6 +1171,9 @@ async function importar(file){
       });
       tocados.push(c.p.id);
     });
+    if(nuevos.length || cambios.length)
+      anotar('Importó el informe de LCR', null,
+        `${nuevos.length} añadido(s), ${cambios.length} actualizado(s)` + (retirar&&ausentes.length ? `, ${ausentes.length} retirado(s)` : ''));
     guardar(tocados);
     if(retirar && ausentes.length){
       const ids = ausentes.map(p=>p.id);
@@ -1149,6 +1237,7 @@ function pintar(){
   panel.querySelectorAll('[data-limpiar]').forEach(b=> b.onclick = ()=>{ filtros={genero:'',tramo:'',motivo:''}; pintar(); });
   panel.querySelectorAll('[data-imprimir]').forEach(b=> b.onclick = ()=> imprimir(b.dataset.imprimir));
   panel.querySelectorAll('[data-csv]').forEach(b=> b.onclick = descargarCSV);
+  panel.querySelectorAll('[data-registro]').forEach(b=> b.onclick = verRegistro);
   panel.querySelectorAll('[data-diag]').forEach(b=> b.onclick = diagnostico);
   const inp = document.getElementById('archivo');
   panel.querySelectorAll('[data-importar]').forEach(b=> b.onclick = ()=> inp.click());

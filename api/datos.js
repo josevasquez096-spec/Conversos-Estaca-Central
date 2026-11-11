@@ -5,6 +5,8 @@ const URL_REDIS   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_R
 const TOKEN_REDIS = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const CODIGO = process.env.CODIGO_ACCESO || '';
 const LLAVE = 'conversos';
+const LLAVE_LOG = 'conversos:registro';
+const TOPE_LOG = 600;          // se guardan los últimos 600 cambios
 
 async function redis(comando) {
   let r;
@@ -48,6 +50,12 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET') {
+      if (/[?&]registro=1/.test(req.url || '')) {
+        const crudo = (await redis(['LRANGE', LLAVE_LOG, 0, 299])) || [];
+        const registro = [];
+        for (const x of crudo) { try { registro.push(JSON.parse(x)); } catch (e) { /* entrada corrupta */ } }
+        return res.status(200).json({ registro });
+      }
       const plano = (await redis(['HGETALL', LLAVE])) || [];
       const personas = [];
       for (let i = 1; i < plano.length; i += 2) {
@@ -61,6 +69,8 @@ module.exports = async (req, res) => {
       if (typeof cuerpo === 'string') cuerpo = JSON.parse(cuerpo);
       const guardar = Array.isArray(cuerpo?.guardar) ? cuerpo.guardar : [];
       const borrar  = Array.isArray(cuerpo?.borrar)  ? cuerpo.borrar  : [];
+      const registro = Array.isArray(cuerpo?.registro) ? cuerpo.registro.slice(0, 80) : [];
+      const quien = String(cuerpo?.quien || '').trim().slice(0, 60) || 'Sin nombre';
 
       if (guardar.length) {
         const pares = [];
@@ -72,7 +82,21 @@ module.exports = async (req, res) => {
       }
       if (borrar.length) await redis(['HDEL', LLAVE, ...borrar.map(String)]);
 
-      return res.status(200).json({ ok: true, guardados: guardar.length, borrados: borrar.length });
+      if (registro.length) {
+        // la hora y el nombre los pone el servidor, para que no dependan del reloj de cada quien
+        const ahora = new Date().toISOString();
+        const filas = registro.map(e => JSON.stringify({
+          t: ahora, quien,
+          accion:  String(e?.accion  || '').slice(0, 40),
+          unidad:  String(e?.unidad  || '').slice(0, 60),
+          persona: String(e?.persona || '').slice(0, 60),
+          detalle: String(e?.detalle || '').slice(0, 160)
+        })).reverse();                       // el más reciente queda de primero
+        await redis(['LPUSH', LLAVE_LOG, ...filas]);
+        await redis(['LTRIM', LLAVE_LOG, 0, TOPE_LOG - 1]);
+      }
+
+      return res.status(200).json({ ok: true, guardados: guardar.length, borrados: borrar.length, anotados: registro.length });
     }
 
     res.setHeader('Allow', 'GET, POST');
